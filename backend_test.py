@@ -30,27 +30,37 @@ def log_test(test_name, status, details=""):
 
 def create_test_image():
     """Create a simple test image for upload testing"""
-    # Create a simple UI mockup image
-    img = Image.new('RGB', (400, 300), color='white')
+    # Create a more realistic UI mockup image
+    img = Image.new('RGB', (600, 400), color='#f8f9fa')
     
-    # Add some basic UI elements (simulate a simple form)
+    # Add some basic UI elements (simulate a login form)
     from PIL import ImageDraw, ImageFont
     draw = ImageDraw.Draw(img)
     
-    # Draw a simple form layout
-    draw.rectangle([50, 50, 350, 80], outline='black', width=2)  # Header
-    draw.rectangle([50, 100, 350, 130], outline='gray', width=1)  # Input field
-    draw.rectangle([50, 150, 350, 180], outline='gray', width=1)  # Input field
-    draw.rectangle([150, 200, 250, 230], fill='blue', outline='blue')  # Button
+    # Draw a login form layout
+    # Header
+    draw.rectangle([50, 30, 550, 80], fill='#007bff', outline='#007bff')
     
-    # Add text
+    # Form container
+    draw.rectangle([100, 120, 500, 350], fill='white', outline='#dee2e6', width=2)
+    
+    # Input fields
+    draw.rectangle([130, 160, 470, 190], fill='white', outline='#ced4da', width=1)
+    draw.rectangle([130, 210, 470, 240], fill='white', outline='#ced4da', width=1)
+    
+    # Button
+    draw.rectangle([200, 270, 400, 300], fill='#28a745', outline='#28a745')
+    
+    # Add text labels
     try:
-        draw.text((60, 60), "Contact Form", fill='black')
-        draw.text((60, 110), "Name:", fill='black')
-        draw.text((60, 160), "Email:", fill='black')
-        draw.text((175, 210), "Submit", fill='white')
+        # Try to use a font, but don't fail if not available
+        draw.text((200, 45), "Login Form", fill='white')
+        draw.text((140, 145), "Username:", fill='black')
+        draw.text((140, 195), "Password:", fill='black')
+        draw.text((280, 280), "Sign In", fill='white')
+        draw.text((250, 320), "Forgot Password?", fill='#007bff')
     except:
-        pass  # Font might not be available
+        pass  # Font might not be available, but shape is enough
     
     # Convert to bytes
     img_byte_arr = io.BytesIO()
