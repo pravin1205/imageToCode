@@ -162,22 +162,6 @@ function App() {
         componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
         componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
         
-        // If it's a function component, extract it properly
-        if (componentCode.includes('function') || componentCode.includes('const') || componentCode.includes('=>')) {
-          // Try to find the main function/component
-          const functionMatch = componentCode.match(/(function\s+\w+\s*\([^)]*\)\s*\{[\s\S]*\})/);
-          const constMatch = componentCode.match(/(const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*\})/);
-          const arrowMatch = componentCode.match(/(const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\([\s\S]*\))/);
-          
-          if (functionMatch) {
-            componentCode = functionMatch[1];
-          } else if (constMatch) {
-            componentCode = constMatch[1];
-          } else if (arrowMatch) {
-            componentCode = arrowMatch[1];
-          }
-        }
-        
         return `
           <!DOCTYPE html>
           <html>
@@ -197,32 +181,80 @@ function App() {
             <div id="root"></div>
             <script type="text/babel">
               try {
-                // If the code contains JSX directly, wrap it
-                ${componentCode.includes('return') ? `
-                  ${componentCode}
-                  
-                  // Find the component function name
-                  const componentName = ${componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[1] || componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[2] || 'App'};
-                  const ComponentToRender = typeof ${componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[1] || componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[2] || 'App'} !== 'undefined' ? ${componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[1] || componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[2] || 'App'} : () => React.createElement('div', {}, 'Component not found');
-                  
+                // Make React hooks available globally
+                const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef, useImperativeHandle, useLayoutEffect, useDebugValue } = React;
+                
+                // Also make common React functions available
+                const { createElement, Component, PureComponent, Fragment } = React;
+                
+                ${componentCode}
+                
+                // Try to extract and render the component
+                let ComponentToRender;
+                
+                // Look for function component
+                const funcMatch = componentCode.match(/function\\s+(\\w+)/);
+                if (funcMatch) {
+                  ComponentToRender = window[funcMatch[1]];
+                }
+                
+                // Look for const component
+                if (!ComponentToRender) {
+                  const constMatch = componentCode.match(/const\\s+(\\w+)\\s*=/);
+                  if (constMatch) {
+                    ComponentToRender = window[constMatch[1]];
+                  }
+                }
+                
+                // Look for arrow function component
+                if (!ComponentToRender) {
+                  const arrowMatch = componentCode.match(/const\\s+(\\w+)\\s*=.*=>/);
+                  if (arrowMatch) {
+                    ComponentToRender = window[arrowMatch[1]];
+                  }
+                }
+                
+                // If we found a component, render it
+                if (ComponentToRender && typeof ComponentToRender === 'function') {
                   const root = ReactDOM.createRoot(document.getElementById('root'));
                   root.render(React.createElement(ComponentToRender));
-                ` : `
-                  // If it's just JSX, create a simple component
+                } else {
+                  // Fallback: try to execute the code and render any JSX return
+                  const root = ReactDOM.createRoot(document.getElementById('root'));
+                  
+                  // Create a wrapper component that executes the generated code
                   function GeneratedComponent() {
-                    return (
-                      <div className="p-4">
-                        ${componentCode.startsWith('<') ? componentCode : `<div>${componentCode}</div>`}
-                      </div>
-                    );
+                    try {
+                      // If the code has a return statement with JSX, extract it
+                      const returnMatch = componentCode.match(/return\\s*\\(([\\s\\S]*?)\\);?$/);
+                      if (returnMatch) {
+                        // Extract JSX content
+                        const jsxContent = returnMatch[1].trim();
+                        return eval('(' + jsxContent + ')');
+                      } else if (componentCode.includes('return')) {
+                        // Simple return statement
+                        const simpleReturnMatch = componentCode.match(/return\\s*([^;]+);?$/);
+                        if (simpleReturnMatch) {
+                          return eval(simpleReturnMatch[1]);
+                        }
+                      }
+                      
+                      // If no return found, wrap the code in a div
+                      return React.createElement('div', {className: 'p-4'}, 
+                        React.createElement('pre', {className: 'bg-gray-100 p-4 rounded'}, componentCode)
+                      );
+                    } catch (error) {
+                      return React.createElement('div', {
+                        className: 'p-4 bg-red-50 border border-red-200 rounded text-red-700'
+                      }, 'Preview Error: ' + error.message);
+                    }
                   }
                   
-                  const root = ReactDOM.createRoot(document.getElementById('root'));
                   root.render(React.createElement(GeneratedComponent));
-                `}
+                }
               } catch (error) {
                 console.error('Preview error:', error);
-                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #ef4444; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">Preview Error: ' + error.message + '</div>';
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #ef4444; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui;">Preview Error: ' + error.message + '<br><br>Generated Code:<br><pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px; overflow: auto;">' + \`${componentCode.replace(/\`/g, '\\`')}\` + '</pre></div>';
               }
             </script>
           </body>
@@ -304,7 +336,7 @@ function App() {
               srcDoc={createPreviewHTML()}
               className="w-full h-96 border-0"
               title="Code Preview"
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
               onLoad={() => {
                 console.log('Preview iframe loaded successfully');
               }}
