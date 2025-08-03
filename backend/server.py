@@ -236,6 +236,8 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
             "image_base64": image_base64
         }
         
+    except HTTPException:
+        raise  # Re-raise HTTPExceptions as-is
     except Exception as e:
         logger.error(f"Code generation error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Code generation failed: {str(e)}")
