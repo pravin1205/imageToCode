@@ -211,6 +211,9 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
         # Get AI response
         generated_code = await chat.send_message(user_message)
         
+        # Clean up temporary file
+        os.unlink(temp_file_path)
+        
         # Save to database
         session_data = ProjectSession(
             id=session_id,
