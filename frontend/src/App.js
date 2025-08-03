@@ -148,8 +148,128 @@ function App() {
   const renderPreview = () => {
     if (!generatedCode) return null;
 
-    // For React code, create a simple preview
-    const previewContent = generatedCode;
+    // Clean and prepare the generated code for preview
+    let previewContent = generatedCode.trim();
+    
+    // Create proper HTML document for iframe
+    const createPreviewHTML = () => {
+      // For React code
+      if (selectedTech === 'react') {
+        // Extract the component code and clean it
+        let componentCode = previewContent;
+        
+        // Remove export statements and clean the code
+        componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
+        componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
+        
+        // If it's a function component, extract it properly
+        if (componentCode.includes('function') || componentCode.includes('const') || componentCode.includes('=>')) {
+          // Try to find the main function/component
+          const functionMatch = componentCode.match(/(function\s+\w+\s*\([^)]*\)\s*\{[\s\S]*\})/);
+          const constMatch = componentCode.match(/(const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*\})/);
+          const arrowMatch = componentCode.match(/(const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\([\s\S]*\))/);
+          
+          if (functionMatch) {
+            componentCode = functionMatch[1];
+          } else if (constMatch) {
+            componentCode = constMatch[1];
+          } else if (arrowMatch) {
+            componentCode = arrowMatch[1];
+          }
+        }
+        
+        return `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+            <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+            <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; background: white; }
+              * { box-sizing: border-box; }
+            </style>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script type="text/babel">
+              try {
+                // If the code contains JSX directly, wrap it
+                ${componentCode.includes('return') ? `
+                  ${componentCode}
+                  
+                  // Find the component function name
+                  const componentName = ${componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[1] || componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[2] || 'App'};
+                  const ComponentToRender = typeof ${componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[1] || componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[2] || 'App'} !== 'undefined' ? ${componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[1] || componentCode.match(/(?:function\s+(\w+)|const\s+(\w+)\s*=)/)?.[2] || 'App'} : () => React.createElement('div', {}, 'Component not found');
+                  
+                  const root = ReactDOM.createRoot(document.getElementById('root'));
+                  root.render(React.createElement(ComponentToRender));
+                ` : `
+                  // If it's just JSX, create a simple component
+                  function GeneratedComponent() {
+                    return (
+                      <div className="p-4">
+                        ${componentCode.startsWith('<') ? componentCode : `<div>${componentCode}</div>`}
+                      </div>
+                    );
+                  }
+                  
+                  const root = ReactDOM.createRoot(document.getElementById('root'));
+                  root.render(React.createElement(GeneratedComponent));
+                `}
+              } catch (error) {
+                console.error('Preview error:', error);
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #ef4444; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">Preview Error: ' + error.message + '</div>';
+              }
+            </script>
+          </body>
+          </html>
+        `;
+      }
+      
+      // For HTML/CSS/JS
+      if (selectedTech === 'html') {
+        return previewContent.includes('<!DOCTYPE') ? previewContent : `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; }
+            </style>
+          </head>
+          <body>
+            ${previewContent}
+          </body>
+          </html>
+        `;
+      }
+      
+      // For other frameworks, show code as text for now
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { margin: 0; padding: 20px; font-family: monospace; background: #f8f9fa; }
+            .code-preview { background: white; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; }
+            pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+          </style>
+        </head>
+        <body>
+          <div class="code-preview">
+            <h3>Generated ${selectedTech.toUpperCase()} Code:</h3>
+            <pre>${previewContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+          </div>
+        </body>
+        </html>
+      `;
+    };
 
     return (
       <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
@@ -173,50 +293,21 @@ function App() {
         </div>
         <div className="p-4 bg-gray-50 min-h-96">
           <div 
-            className="bg-white border rounded mx-auto transition-all duration-300"
+            className="bg-white border rounded mx-auto transition-all duration-300 overflow-hidden"
             style={{ 
               width: PREVIEW_MODES.find(m => m.value === previewMode)?.width || '100%',
               maxWidth: '100%'
             }}
           >
             <iframe
-              srcDoc={`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <meta charset="utf-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1">
-                  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-                  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-                  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-                  <script src="https://cdn.tailwindcss.com"></script>
-                  <style>
-                    body { margin: 0; padding: 20px; font-family: system-ui, -apple-system, sans-serif; }
-                  </style>
-                </head>
-                <body>
-                  <div id="root"></div>
-                  <script type="text/babel">
-                    ${previewContent.includes('export default') ? previewContent : `
-                      function GeneratedComponent() {
-                        return (
-                          <div>
-                            <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                              <code>${previewContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>
-                            </pre>
-                          </div>
-                        );
-                      }
-                    `}
-                    
-                    const root = ReactDOM.createRoot(document.getElementById('root'));
-                    root.render(<GeneratedComponent />);
-                  </script>
-                </body>
-                </html>
-              `}
-              className="w-full h-96 border rounded"
+              key={`${selectedTech}-${previewMode}-${generatedCode.length}`}
+              srcDoc={createPreviewHTML()}
+              className="w-full h-96 border-0"
               title="Code Preview"
+              sandbox="allow-scripts"
+              onLoad={() => {
+                console.log('Preview iframe loaded successfully');
+              }}
             />
           </div>
         </div>
