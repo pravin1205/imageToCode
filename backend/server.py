@@ -306,7 +306,7 @@ If it's a question, provide a helpful answer.
 @api_router.get("/session/{session_id}")
 async def get_session(session_id: str):
     try:
-        session = await db.project_sessions.find_one({"id": session_id})
+        session = await db.project_sessions.find_one({"id": session_id}, {"_id": 0})
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
@@ -319,7 +319,7 @@ async def get_session(session_id: str):
 @api_router.get("/sessions")
 async def get_all_sessions():
     try:
-        sessions = await db.project_sessions.find().to_list(100)
+        sessions = await db.project_sessions.find({}, {"_id": 0}).to_list(100)
         return sessions
         
     except Exception as e:
