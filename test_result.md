@@ -263,8 +263,10 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
-  stuck_tasks: []
+  current_focus:
+    - "Live preview system"
+  stuck_tasks:
+    - "Live preview system"
   test_all: false
   test_priority: "high_first"
 
@@ -273,3 +275,5 @@ agent_communication:
     message: "Implemented complete screenshot-to-code generator with Gemini 2.5 Flash integration. All backend APIs created with emergentintegrations library. Frontend has full UI including upload, preview, and chat. Ready for comprehensive testing to verify functionality."
   - agent: "testing"
     message: "BACKEND TESTING COMPLETE: All 5 high-priority backend tasks are now working correctly. Fixed critical issues: (1) Gemini model name corrected to 'gemini-2.5-flash', (2) FileContentWithMimeType constructor fixed to use file_path, (3) MongoDB ObjectId serialization fixed, (4) HTTPException handling improved. All APIs tested successfully with comprehensive test suite covering file upload, code generation for all frameworks, chat functionality, and session management. Backend is production-ready."
+  - agent: "testing"
+    message: "FRONTEND TESTING COMPLETE: Comprehensive testing revealed 4/5 frontend tasks working correctly. CRITICAL ISSUE FOUND: Live Preview system has blank/white iframe despite proper setup. Root cause: React hooks (useState) not properly imported in iframe context, causing component rendering failures. File upload, technology selection, responsive tabs, and chat interface all working perfectly. Generated code section displays 2800+ character code with syntax highlighting. This is the exact issue reported by user - live preview blank/not working."
