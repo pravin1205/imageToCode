@@ -312,6 +312,8 @@ async def get_session(session_id: str):
         
         return session
         
+    except HTTPException:
+        raise  # Re-raise HTTPExceptions as-is
     except Exception as e:
         logger.error(f"Session retrieval error: {str(e)}")
         raise HTTPException(status_code=500, detail="Session retrieval failed")
