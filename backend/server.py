@@ -193,13 +193,18 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
         # Get framework-specific prompt
         system_prompt = FRAMEWORK_TEMPLATES.get(technology, FRAMEWORK_TEMPLATES["react"])
         
+        # Save image temporarily for processing
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+            temp_file.write(contents)
+            temp_file_path = temp_file.name
+        
         # Create message with image
         user_message = UserMessage(
             text=system_prompt + f"\n\nGenerate {technology} code for this UI screenshot.",
             file_contents=[FileContentWithMimeType(
-                file_path=None,
-                file_content=contents,
-                mime_type=file.content_type
+                mime_type=file.content_type,
+                file_path=temp_file_path
             )]
         )
         
