@@ -154,7 +154,7 @@ def create_gemini_chat(session_id: str) -> LlmChat:
         api_key=GEMINI_API_KEY,
         session_id=session_id,
         system_message="You are an expert frontend developer specializing in converting UI screenshots into clean, responsive code."
-    ).with_model("gemini", "gemini-2.5-flash-preview-04-17")
+    ).with_model("gemini", "gemini-2.5-flash")
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
