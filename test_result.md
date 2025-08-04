@@ -330,12 +330,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "File upload component with manual generation"
-    - "User comments/instructions field"  
     - "Live preview system"
-    - "Modern UI design"
-    - "Enhanced loading animations"
-  stuck_tasks: []
+  stuck_tasks:
+    - "Live preview system"
   test_all: false
   test_priority: "high_first"
 
