@@ -226,9 +226,9 @@ function App() {
                 
                 // Look for various component patterns
                 const patterns = [
-                  /(?:function|const|let|var)\\s+(\\w+)/g,
-                  /const\\s+(\\w+)\\s*=\\s*\\(.*?\\)\\s*=>/g,
-                  /const\\s+(\\w+)\\s*=\\s*function/g
+                  /(?:function|const|let|var)\s+(\w+)/g,
+                  /const\s+(\w+)\s*=\s*\(.*?\)\s*=>/g,
+                  /const\s+(\w+)\s*=\s*function/g
                 ];
                 
                 for (let pattern of patterns) {
