@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 
 # Configuration
-BACKEND_URL = "https://e2efd265-c17a-4d7e-9d94-f50d5332a9aa.preview.emergentagent.com/api"
+BACKEND_URL = "https://0fea21c3-4df7-4a2e-93ce-149cc8ddd624.preview.emergentagent.com/api"
 TEST_RESULTS = []
 
 def log_test(test_name, status, details=""):
