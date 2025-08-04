@@ -141,6 +141,8 @@ Generate ONLY the HTML/CSS/JS code, no explanations.
 def create_gemini_chat(session_id: str = None):
     """Create a Gemini chat instance"""
     return LlmChat(
+        session_id=session_id or str(uuid.uuid4()),
+        system_message="You are an expert frontend developer who generates clean, modern code from UI screenshots.",
         api_key=GEMINI_API_KEY
     )
 
