@@ -337,8 +337,7 @@ metadata:
 test_plan:
   current_focus:
     - "Live preview system"
-  stuck_tasks:
-    - "Live preview system"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
