@@ -180,6 +180,21 @@ backend:
         agent: "testing"
         comment: "TESTED: Session management working correctly. Fixed MongoDB ObjectId serialization by excluding _id field. Individual session retrieval and all sessions listing working. Proper 404 handling for invalid sessions."
 
+  - task: "Enhanced upload-and-generate endpoint with comments parameter"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced /api/upload-and-generate endpoint to accept comments parameter for user requirements"
+      - working: true
+        agent: "testing"
+        comment: "TESTED: Enhanced comments functionality working perfectly. Fixed form data parsing issue by using Form() for parameters. Comments are properly received, integrated into AI prompts, and returned in responses. AI successfully incorporates user requirements (tested with 'blue', 'sticky', 'navbar', 'hover', 'purple', 'testing' keywords). Backward compatibility maintained - endpoint works with or without comments."
+
 frontend:
   - task: "File upload component"
     implemented: true
