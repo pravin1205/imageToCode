@@ -263,31 +263,60 @@ function App() {
                 window.PureComponent = React.PureComponent;
                 window.Fragment = React.Fragment;
                 
-                // Execute the component code in global scope
-                ${componentCode}
+                // Wrap component execution in try-catch to prevent regex and other errors
+                let componentExecutionSuccess = false;
+                try {
+                  // Execute the component code in global scope
+                  ${componentCode}
+                  componentExecutionSuccess = true;
+                } catch (codeError) {
+                  console.error('Component code execution error:', codeError);
+                  // Create a fallback error component
+                  window.ErrorFallback = function() {
+                    return React.createElement('div', {
+                      style: { 
+                        padding: '20px', 
+                        backgroundColor: '#fef2f2', 
+                        border: '1px solid #fecaca', 
+                        borderRadius: '8px',
+                        color: '#dc2626',
+                        fontFamily: 'system-ui'
+                      }
+                    }, 
+                      React.createElement('h3', null, 'Preview Error'),
+                      React.createElement('p', null, 'There was an error in the generated code that prevents preview rendering.'),
+                      React.createElement('details', null,
+                        React.createElement('summary', null, 'Error Details'),
+                        React.createElement('pre', { style: { fontSize: '12px', marginTop: '10px' } }, codeError.message)
+                      )
+                    );
+                  };
+                }
                 
                 // Enhanced component detection and rendering
                 let ComponentToRender;
                 let componentName;
                 
-                // Look for various component patterns
-                const patterns = [
-                  /(?:function|const|let|var)\s+(\w+)/g,
-                  /const\s+(\w+)\s*=\s*\(.*?\)\s*=>/g,
-                  /const\s+(\w+)\s*=\s*function/g
-                ];
-                
-                for (let pattern of patterns) {
-                  let match;
-                  while ((match = pattern.exec(componentCode)) !== null) {
-                    const name = match[1];
-                    if (name && typeof window[name] === 'function' && name !== 'useState' && name !== 'useEffect') {
-                      ComponentToRender = window[name];
-                      componentName = name;
-                      break;
+                if (componentExecutionSuccess) {
+                  // Look for various component patterns
+                  const patterns = [
+                    /(?:function|const|let|var)\\s+(\\w+)/g,
+                    /const\\s+(\\w+)\\s*=\\s*\\(.*?\\)\\s*=>/g,
+                    /const\\s+(\\w+)\\s*=\\s*function/g
+                  ];
+                  
+                  for (let pattern of patterns) {
+                    let match;
+                    while ((match = pattern.exec(\`${componentCode}\`)) !== null) {
+                      const name = match[1];
+                      if (name && typeof window[name] === 'function' && name !== 'useState' && name !== 'useEffect') {
+                        ComponentToRender = window[name];
+                        componentName = name;
+                        break;
+                      }
                     }
+                    if (ComponentToRender) break;
                   }
-                  if (ComponentToRender) break;
                 }
                 
                 // Try to render the component
@@ -296,27 +325,35 @@ function App() {
                 if (ComponentToRender) {
                   console.log('Rendering component:', componentName);
                   root.render(React.createElement(ComponentToRender));
+                } else if (window.ErrorFallback) {
+                  // Render error fallback if code execution failed
+                  root.render(React.createElement(window.ErrorFallback));
                 } else {
                   // Enhanced fallback: try to extract and execute JSX directly
                   function FallbackComponent() {
                     try {
-                      // Look for JSX return patterns
+                      // Look for JSX return patterns with better regex handling
                       const jsxPatterns = [
-                        /return\s*\(([\s\S]*?)\)\s*;?\s*}?$/,
-                        /return\s*([^;\n]+);?\s*}?$/,
-                        /=>\s*\(([\s\S]*?)\)\s*;?$/,
-                        /=>\s*([^;\n]+);?$/
+                        /return\\s*\\(([\\s\\S]*?)\\)\\s*;?\\s*}?$/,
+                        /return\\s*([^;\\n]+);?\\s*}?$/,
+                        /=>\\s*\\(([\\s\\S]*?)\\)\\s*;?$/,
+                        /=>\\s*([^;\\n]+);?$/
                       ];
                       
                       for (let pattern of jsxPatterns) {
-                        const match = componentCode.match(pattern);
-                        if (match) {
-                          const jsxContent = match[1].trim();
-                          console.log('Found JSX content:', jsxContent);
-                          
-                          // Try to evaluate the JSX
-                          const result = eval('(' + jsxContent + ')');
-                          if (result) return result;
+                        try {
+                          const match = \`${componentCode}\`.match(pattern);
+                          if (match) {
+                            const jsxContent = match[1].trim();
+                            console.log('Found JSX content:', jsxContent);
+                            
+                            // Try to evaluate the JSX
+                            const result = eval('(' + jsxContent + ')');
+                            if (result) return result;
+                          }
+                        } catch (jsxError) {
+                          console.warn('JSX pattern matching error:', jsxError);
+                          continue; // Try next pattern
                         }
                       }
                       
@@ -337,7 +374,7 @@ function App() {
                 }
               } catch (error) {
                 console.error('Preview error:', error);
-                const errorMsg = 'Preview Error: ' + error.message + '\n\nGenerated Code:\n' + componentCode;
+                const errorMsg = 'Preview Error: ' + error.message + '\\n\\nGenerated Code:\\n' + \`${componentCode}\`;
                 document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui; white-space: pre-wrap; font-size: 14px;">' + errorMsg + '</div>';
               }
             </script>
