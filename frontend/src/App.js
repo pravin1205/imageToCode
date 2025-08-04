@@ -220,6 +220,9 @@ function App() {
     
     // Create proper HTML document for iframe
     const createPreviewHTML = () => {
+      console.log('createPreviewHTML called for technology:', selectedTech);
+      
+      try {
       // For React code
       if (selectedTech === 'react') {
         // Extract the component code and clean it
