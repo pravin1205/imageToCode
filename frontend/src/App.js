@@ -266,7 +266,7 @@ export default ErrorComponent;`;
               
               try {
                 // === GENERATED COMPONENT CODE STARTS HERE ===
-                ${componentCode}
+                ${componentCode.replace(/\$/g, '\\$')}
                 // === GENERATED COMPONENT CODE ENDS HERE ===
                 
                 // Auto-detect and render component after Babel transformation
@@ -288,18 +288,20 @@ export default ErrorComponent;`;
                     
                     const excludedNames = ['useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'console', 'alert', 'setTimeout', 'setInterval'];
                     
+                    const componentCodeStr = \`${componentCode.replace(/\$/g, '\\$')}\`;
+                    
                     // Try each pattern to find components
                     for (let patternObj of componentPatterns) {
                       const { pattern, type } = patternObj;
                       let match;
                       
-                      while ((match = pattern.exec(\`${componentCode}\`)) !== null) {
+                      while ((match = pattern.exec(componentCodeStr)) !== null) {
                         const name = match[1];
                         
                         if (name && !excludedNames.includes(name) && typeof window[name] === 'function') {
                           ComponentToRender = window[name];
                           componentName = name;
-                          console.log(\`Found \${type} component: \${componentName}\`);
+                          console.log('Found ' + type + ' component: ' + componentName);
                           break;
                         }
                       }
@@ -310,81 +312,123 @@ export default ErrorComponent;`;
                     // Render the component or fallback
                     if (ComponentToRender) {
                       console.log('Rendering detected component:', componentName);
-                      root.render(<ComponentToRender />);
+                      root.render(React.createElement(ComponentToRender));
                     } else {
                       // Show success message if no component detected but code executed successfully  
-                      const SuccessComponent = () => (
-                        <div className="flex items-center justify-center min-h-[200px] p-6">
-                          <div className="max-w-md mx-auto text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
-                            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </div>
-                            <h3 className="text-xl font-bold text-green-800 mb-3">Code Generated Successfully!</h3>
-                            <p className="text-green-600 mb-4">
-                              Your React component has been generated and processed without errors.
-                            </p>
-                            <div className="bg-green-100 p-3 rounded-lg text-sm text-green-700">
-                              <strong>Status:</strong> Code compiled and ready to use
-                            </div>
-                          </div>
-                        </div>
-                      );
+                      const SuccessComponent = () => React.createElement('div', {
+                        className: 'flex items-center justify-center min-h-[200px] p-6'
+                      }, React.createElement('div', {
+                        className: 'max-w-md mx-auto text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg'
+                      }, [
+                        React.createElement('div', {
+                          key: 'icon',
+                          className: 'w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4'
+                        }, React.createElement('svg', {
+                          className: 'w-8 h-8 text-white',
+                          fill: 'none',
+                          stroke: 'currentColor',
+                          viewBox: '0 0 24 24'
+                        }, React.createElement('path', {
+                          strokeLinecap: 'round',
+                          strokeLinejoin: 'round',
+                          strokeWidth: 2,
+                          d: 'M5 13l4 4L19 7'
+                        }))),
+                        React.createElement('h3', {
+                          key: 'title',
+                          className: 'text-xl font-bold text-green-800 mb-3'
+                        }, 'Code Generated Successfully!'),
+                        React.createElement('p', {
+                          key: 'description',
+                          className: 'text-green-600 mb-4'
+                        }, 'Your React component has been generated and processed without errors.'),
+                        React.createElement('div', {
+                          key: 'status',
+                          className: 'bg-green-100 p-3 rounded-lg text-sm text-green-700'
+                        }, React.createElement('strong', null, 'Status: '), 'Code compiled and ready to use')
+                      ]));
                       
                       console.log('No component auto-detected, showing success message');
-                      root.render(<SuccessComponent />);
+                      root.render(React.createElement(SuccessComponent));
                     }
                     
                   } catch (renderError) {
                     console.error('Component render error:', renderError);
                     
-                    const ErrorComponent = () => (
-                      <div className="flex items-center justify-center min-h-[200px] p-6">
-                        <div className="max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6">
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-red-800 mb-3">Render Error</h3>
-                            <p className="text-red-600 mb-3">There was an error rendering the component:</p>
-                            <pre className="bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left">
-                              {renderError.message}
-                            </pre>
-                          </div>
-                        </div>
-                      );
-                    
+                    const ErrorComponent = () => React.createElement('div', {
+                      className: 'flex items-center justify-center min-h-[200px] p-6'
+                    }, React.createElement('div', {
+                      className: 'max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6'
+                    }, React.createElement('div', {
+                      className: 'text-center'
+                    }, [
+                      React.createElement('div', {
+                        key: 'icon',
+                        className: 'w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4'
+                      }, React.createElement('svg', {
+                        className: 'w-8 h-8 text-white',
+                        fill: 'none',
+                        stroke: 'currentColor',
+                        viewBox: '0 0 24 24'
+                      }, React.createElement('path', {
+                        strokeLinecap: 'round',
+                        strokeLinejoin: 'round',
+                        strokeWidth: 2,
+                        d: 'M6 18L18 6M6 6l12 12'
+                      }))),
+                      React.createElement('h3', {
+                        key: 'title',
+                        className: 'text-lg font-bold text-red-800 mb-3'
+                      }, 'Render Error'),
+                      React.createElement('p', {
+                        key: 'description',
+                        className: 'text-red-600 mb-3'
+                      }, 'There was an error rendering the component:'),
+                      React.createElement('pre', {
+                        key: 'error',
+                        className: 'bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left'
+                      }, renderError.message)
+                    ])));
+                  
                     const root = ReactDOM.createRoot(document.getElementById('root'));
-                    root.render(<ErrorComponent />);
+                    root.render(React.createElement(ErrorComponent));
                   }
                 }, 100);
                 
               } catch (transformError) {
                 console.error('Babel transformation error:', transformError);
                 
-                // Render error message using React
+                // Render error message using React.createElement to avoid JSX issues
                 setTimeout(() => {
-                  const ErrorComponent = () => (
-                    <div className="flex items-center justify-center min-h-[200px] p-6">
-                      <div className="max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6">
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="text-white text-2xl">!</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-red-800 mb-3">Transformation Error</h3>
-                          <p className="text-red-600 mb-3">There was an error processing the JSX code:</p>
-                          <pre className="bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left">
-                            {transformError.message}
-                          </pre>
-                        </div>
-                      </div>
-                    );
-                  
+                  const ErrorComponent = () => React.createElement('div', {
+                    className: 'flex items-center justify-center min-h-[200px] p-6'
+                  }, React.createElement('div', {
+                    className: 'max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6'
+                  }, React.createElement('div', {
+                    className: 'text-center'
+                  }, [
+                    React.createElement('div', {
+                      key: 'icon',
+                      className: 'w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4'
+                    }, React.createElement('span', {
+                      className: 'text-white text-2xl'
+                    }, '!')),
+                    React.createElement('h3', {
+                      key: 'title',
+                      className: 'text-lg font-bold text-red-800 mb-3'
+                    }, 'Transformation Error'),
+                    React.createElement('p', {
+                      key: 'description',
+                      className: 'text-red-600 mb-3'
+                    }, 'There was an error processing the code:'),
+                    React.createElement('pre', {
+                      key: 'error',
+                      className: 'bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left'
+                    }, transformError.message)
+                  ])));
+                
                   const root = ReactDOM.createRoot(document.getElementById('root'));
-                  root.render(<ErrorComponent />);
+                  root.render(React.createElement(ErrorComponent));
                 }, 100);
               }
             </script>
