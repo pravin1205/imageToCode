@@ -196,20 +196,29 @@ backend:
         comment: "TESTED: Enhanced comments functionality working perfectly. Fixed form data parsing issue by using Form() for parameters. Comments are properly received, integrated into AI prompts, and returned in responses. AI successfully incorporates user requirements (tested with 'blue', 'sticky', 'navbar', 'hover', 'purple', 'testing' keywords). Backward compatibility maintained - endpoint works with or without comments."
 
 frontend:
-  - task: "File upload component"
+  - task: "File upload component with manual generation"
     implemented: true
     working: true
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Created drag-and-drop file upload interface with image preview"
-      - working: true
-        agent: "testing"
-        comment: "TESTED: File upload working perfectly. Drag-and-drop interface functional, image preview displays correctly, file validation works (rejects non-images), and upload triggers code generation successfully."
+        comment: "Enhanced file upload to store file without auto-generation, added manual 'Generate Code' button workflow"
+
+  - task: "User comments/instructions field"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added multi-line textarea for user instructions that gets sent with generation request"
 
   - task: "Technology selection dropdown"
     implemented: true
@@ -258,6 +267,30 @@ frontend:
       - working: true
         agent: "testing"
         comment: "TESTED: Responsive preview tabs working correctly. All three modes (Desktop, Tablet, Mobile) activate properly, iframe resizes appropriately for each mode, and transitions are smooth."
+
+  - task: "Modern UI design"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Completely redesigned UI with modern gradients, enhanced animations, better typography, step-by-step workflow, and improved visual hierarchy"
+
+  - task: "Enhanced loading animations"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added custom loading spinner component with dual spinning rings and descriptive messages during code generation"
 
   - task: "Chat interface"
     implemented: true
