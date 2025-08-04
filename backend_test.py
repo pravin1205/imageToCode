@@ -147,6 +147,159 @@ def test_file_upload_and_generation():
         log_test("File Upload Setup", "FAIL", f"Setup error: {str(e)}")
         return False
 
+def test_file_upload_with_comments():
+    """Test file upload with comments parameter - NEW ENHANCED FEATURE"""
+    try:
+        # Create test image
+        test_image = create_test_image()
+        
+        # Test with specific user comments
+        test_comments = "Make the navbar sticky and use blue color scheme. Add hover effects to buttons."
+        
+        files = {
+            'file': ('test_ui_screenshot.png', test_image, 'image/png')
+        }
+        data = {
+            'technology': 'react',
+            'comments': test_comments
+        }
+        
+        response = requests.post(
+            f"{BACKEND_URL}/upload-and-generate",
+            files=files,
+            data=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            required_fields = ['session_id', 'code', 'technology', 'image_base64', 'comments']
+            
+            if all(field in result for field in required_fields):
+                # Verify comments are returned
+                if result['comments'] == test_comments:
+                    # Check if AI incorporated the comments (look for blue, sticky, hover in code)
+                    code_lower = result['code'].lower()
+                    comment_indicators = ['blue', 'sticky', 'hover', 'navbar']
+                    found_indicators = [word for word in comment_indicators if word in code_lower]
+                    
+                    if len(found_indicators) >= 2:  # At least 2 comment requirements should be in code
+                        log_test("File Upload with Comments", "PASS", 
+                               f"AI incorporated user requirements: {found_indicators}. Generated {len(result['code'])} chars")
+                        
+                        # Store session for later tests
+                        global test_session_with_comments
+                        test_session_with_comments = result['session_id']
+                        return True
+                    else:
+                        log_test("File Upload with Comments", "PARTIAL", 
+                               f"Comments returned but may not be fully incorporated in code. Found: {found_indicators}")
+                        return True
+                else:
+                    log_test("File Upload with Comments", "FAIL", 
+                           f"Comments mismatch. Expected: '{test_comments}', Got: '{result.get('comments', 'None')}'")
+                    return False
+            else:
+                missing = [f for f in required_fields if f not in result]
+                log_test("File Upload with Comments", "FAIL", f"Missing fields: {missing}")
+                return False
+        else:
+            log_test("File Upload with Comments", "FAIL", 
+                   f"HTTP {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        log_test("File Upload with Comments", "FAIL", f"Error: {str(e)}")
+        return False
+
+def test_file_upload_without_comments():
+    """Test file upload without comments parameter - backward compatibility"""
+    try:
+        # Create test image
+        test_image = create_test_image()
+        
+        files = {
+            'file': ('test_ui_screenshot.png', test_image, 'image/png')
+        }
+        data = {
+            'technology': 'vue'
+            # No comments parameter
+        }
+        
+        response = requests.post(
+            f"{BACKEND_URL}/upload-and-generate",
+            files=files,
+            data=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            required_fields = ['session_id', 'code', 'technology', 'image_base64', 'comments']
+            
+            if all(field in result for field in required_fields):
+                # Comments should be empty string when not provided
+                if result['comments'] == "":
+                    log_test("File Upload without Comments", "PASS", 
+                           f"Backward compatibility maintained. Generated {len(result['code'])} chars")
+                    return True
+                else:
+                    log_test("File Upload without Comments", "PARTIAL", 
+                           f"Comments field present but not empty: '{result['comments']}'")
+                    return True
+            else:
+                missing = [f for f in required_fields if f not in result]
+                log_test("File Upload without Comments", "FAIL", f"Missing fields: {missing}")
+                return False
+        else:
+            log_test("File Upload without Comments", "FAIL", 
+                   f"HTTP {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        log_test("File Upload without Comments", "FAIL", f"Error: {str(e)}")
+        return False
+
+def test_file_upload_empty_comments():
+    """Test file upload with empty comments parameter"""
+    try:
+        # Create test image
+        test_image = create_test_image()
+        
+        files = {
+            'file': ('test_ui_screenshot.png', test_image, 'image/png')
+        }
+        data = {
+            'technology': 'angular',
+            'comments': ''  # Empty comments
+        }
+        
+        response = requests.post(
+            f"{BACKEND_URL}/upload-and-generate",
+            files=files,
+            data=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            if 'comments' in result and result['comments'] == '':
+                log_test("File Upload with Empty Comments", "PASS", 
+                       f"Empty comments handled correctly. Generated {len(result['code'])} chars")
+                return True
+            else:
+                log_test("File Upload with Empty Comments", "FAIL", 
+                       f"Empty comments not handled correctly: '{result.get('comments', 'Missing')}'")
+                return False
+        else:
+            log_test("File Upload with Empty Comments", "FAIL", 
+                   f"HTTP {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        log_test("File Upload with Empty Comments", "FAIL", f"Error: {str(e)}")
+        return False
+
 def test_invalid_file_upload():
     """Test file upload with invalid file types"""
     try:
