@@ -206,7 +206,14 @@ function App() {
   };
 
   const renderPreview = () => {
-    if (!generatedCode) return null;
+    console.log('renderPreview called, generatedCode length:', generatedCode?.length);
+    
+    if (!generatedCode) {
+      console.log('No generated code, returning null');
+      return null;
+    }
+
+    console.log('Generated code preview:', generatedCode.substring(0, 200));
 
     // Clean and prepare the generated code for preview
     let previewContent = generatedCode.trim();
