@@ -223,8 +223,8 @@ function App() {
       console.log('createPreviewHTML called for technology:', selectedTech);
       
       try {
-      // For React code
-      if (selectedTech === 'react') {
+        // For React code
+        if (selectedTech === 'react') {
         // Extract the component code and clean it
         let componentCode = previewContent;
         
