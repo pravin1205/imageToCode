@@ -311,6 +311,64 @@ def test_file_upload_empty_comments():
         log_test("File Upload with Empty Comments", "FAIL", f"Error: {str(e)}")
         return False
 
+def test_comments_integration_in_ai_prompt():
+    """Test that comments are properly integrated into AI prompt for better code generation"""
+    try:
+        # Create test image
+        test_image = create_test_image()
+        
+        # Test with very specific comments that should appear in generated code
+        test_comments = "Use purple background color and add a large title saying TESTING"
+        
+        files = {
+            'file': ('test_ui_screenshot.png', test_image, 'image/png')
+        }
+        data = {
+            'technology': 'html',  # Use HTML for easier text detection
+            'comments': test_comments
+        }
+        
+        response = requests.post(
+            f"{BACKEND_URL}/upload-and-generate",
+            files=files,
+            data=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if 'code' in result:
+                code_lower = result['code'].lower()
+                
+                # Check if the AI incorporated the specific requirements
+                has_purple = 'purple' in code_lower
+                has_testing = 'testing' in code_lower
+                
+                if has_purple and has_testing:
+                    log_test("Comments Integration in AI Prompt", "PASS", 
+                           f"AI successfully incorporated user comments: purple={has_purple}, testing={has_testing}")
+                    return True
+                elif has_purple or has_testing:
+                    log_test("Comments Integration in AI Prompt", "PARTIAL", 
+                           f"AI partially incorporated comments: purple={has_purple}, testing={has_testing}")
+                    return True
+                else:
+                    log_test("Comments Integration in AI Prompt", "FAIL", 
+                           f"AI did not incorporate specific comments. Generated {len(result['code'])} chars but no 'purple' or 'testing' found")
+                    return False
+            else:
+                log_test("Comments Integration in AI Prompt", "FAIL", "No code generated")
+                return False
+        else:
+            log_test("Comments Integration in AI Prompt", "FAIL", 
+                   f"HTTP {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        log_test("Comments Integration in AI Prompt", "FAIL", f"Error: {str(e)}")
+        return False
+
 def test_invalid_file_upload():
     """Test file upload with invalid file types"""
     try:
