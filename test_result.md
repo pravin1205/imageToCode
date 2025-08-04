@@ -217,11 +217,14 @@ frontend:
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added multi-line textarea for user instructions that gets sent with generation request"
+      - working: true
+        agent: "testing"
+        comment: "TESTED: User comments field working perfectly. Multi-line textarea appears after image upload, accepts user input correctly (tested with 'Make buttons blue and add hover effects'), and integrates with generation request. Optional helper text displayed appropriately."
 
   - task: "Technology selection dropdown"
     implemented: true
