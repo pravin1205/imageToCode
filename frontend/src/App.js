@@ -179,6 +179,9 @@ function App() {
         componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
         componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
         
+        // Sanitize and escape the component code to prevent JavaScript injection and regex errors
+        componentCode = sanitizeComponentCode(componentCode);
+        
         return `
           <!DOCTYPE html>
           <html>
