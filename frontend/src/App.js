@@ -291,7 +291,7 @@ function App() {
                 }
               } catch (error) {
                 console.error('Preview error:', error);
-                const errorMsg = 'Preview Error: ' + error.message + '\\n\\nGenerated Code:\\n' + \`${componentCode}\`;
+                const errorMsg = 'Preview Error: ' + error.message + '\n\nGenerated Code:\n' + componentCode;
                 document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui; white-space: pre-wrap; font-size: 14px;">' + errorMsg + '</div>';
               }
             </script>
