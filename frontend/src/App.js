@@ -238,7 +238,6 @@ function App() {
         
         console.log('Final componentCode for iframe injection:', componentCode.substring(0, 300));
         
-        return `
           <!DOCTYPE html>
           <html>
           <head>
@@ -255,6 +254,7 @@ function App() {
           </head>
           <body>
             <div id="root"></div>
+            <script id="component-code" type="text/plain">${componentCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</script>
             <script type="text/babel">
               try {
                 // Make React hooks and utilities available globally  
@@ -276,11 +276,17 @@ function App() {
                 window.PureComponent = React.PureComponent;
                 window.Fragment = React.Fragment;
                 
+                // Get component code from script tag to avoid template literal conflicts
+                const componentCodeElement = document.getElementById('component-code');
+                const componentCode = componentCodeElement.textContent
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>');
+                
                 // Wrap component execution in try-catch to prevent regex and other errors
                 let componentExecutionSuccess = false;
                 try {
                   // Execute the component code in global scope
-                  ${componentCode}
+                  eval(componentCode);
                   componentExecutionSuccess = true;
                 } catch (codeError) {
                   console.error('Component code execution error:', codeError);
@@ -320,7 +326,7 @@ function App() {
                   
                   for (let pattern of patterns) {
                     let match;
-                    while ((match = pattern.exec(\`${componentCode}\`)) !== null) {
+                    while ((match = pattern.exec(componentCode)) !== null) {
                       const name = match[1];
                       if (name && typeof window[name] === 'function' && name !== 'useState' && name !== 'useEffect') {
                         ComponentToRender = window[name];
@@ -355,7 +361,7 @@ function App() {
                       
                       for (let pattern of jsxPatterns) {
                         try {
-                          const match = \`${componentCode}\`.match(pattern);
+                          const match = componentCode.match(pattern);
                           if (match) {
                             const jsxContent = match[1].trim();
                             console.log('Found JSX content:', jsxContent);
@@ -387,7 +393,7 @@ function App() {
                 }
               } catch (error) {
                 console.error('Preview error:', error);
-                const errorMsg = 'Preview Error: ' + error.message + '\\n\\nGenerated Code:\\n' + \`${componentCode}\`;
+                const errorMsg = 'Preview Error: ' + error.message + '\\n\\nGenerated Code:\\n' + componentCode;
                 document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui; white-space: pre-wrap; font-size: 14px;">' + errorMsg + '</div>';
               }
             </script>
