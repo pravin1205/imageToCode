@@ -469,14 +469,18 @@ def run_all_tests():
     print(f"Testing backend at: {BACKEND_URL}")
     print()
     
-    # Initialize global session variable
-    global test_session_id
+    # Initialize global session variables
+    global test_session_id, test_session_with_comments
     test_session_id = None
+    test_session_with_comments = None
     
     # Run tests in order
     tests = [
         ("Basic Connectivity", test_health_check),
         ("File Upload & Code Generation", test_file_upload_and_generation),
+        ("File Upload WITH Comments (NEW)", test_file_upload_with_comments),
+        ("File Upload WITHOUT Comments", test_file_upload_without_comments),
+        ("File Upload with Empty Comments", test_file_upload_empty_comments),
         ("Invalid File Handling", test_invalid_file_upload),
         ("Chat Functionality", test_chat_functionality),
         ("Session Management", test_session_retrieval),
@@ -521,7 +525,7 @@ def run_all_tests():
     
     # Determine overall status
     critical_failures = [r for r in TEST_RESULTS if r["status"] == "FAIL" and 
-                        any(critical in r["test"] for critical in ["Health Check", "Code Generation", "Gemini AI"])]
+                        any(critical in r["test"] for critical in ["Health Check", "Code Generation", "Gemini AI", "Comments"])]
     
     if len(critical_failures) == 0:
         print("\n🎉 BACKEND TESTS: OVERALL PASS")
