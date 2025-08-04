@@ -115,7 +115,7 @@ def test_file_upload_and_generation():
                 
                 if response.status_code == 200:
                     result = response.json()
-                    required_fields = ['session_id', 'code', 'technology', 'image_base64']
+                    required_fields = ['session_id', 'code', 'technology', 'image_base64', 'comments']
                     
                     if all(field in result for field in required_fields):
                         # Check if we got a meaningful response (not just error message)
