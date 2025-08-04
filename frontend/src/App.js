@@ -6,11 +6,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const TECHNOLOGIES = [
-  { value: "react", label: "React", icon: "⚛️" },
-  { value: "angular", label: "Angular", icon: "🅰️" },
-  { value: "vue", label: "Vue.js", icon: "💚" },
-  { value: "svelte", label: "Svelte", icon: "🧡" },
-  { value: "html", label: "HTML + CSS + JS", icon: "🌐" }
+  { value: "react", label: "React", icon: "⚛️", color: "bg-blue-100 text-blue-800" },
+  { value: "angular", label: "Angular", icon: "🅰️", color: "bg-red-100 text-red-800" },
+  { value: "vue", label: "Vue.js", icon: "💚", color: "bg-green-100 text-green-800" },
+  { value: "svelte", label: "Svelte", icon: "🧡", color: "bg-orange-100 text-orange-800" },
+  { value: "html", label: "HTML + CSS + JS", icon: "🌐", color: "bg-purple-100 text-purple-800" }
 ];
 
 const PREVIEW_MODES = [
@@ -23,6 +23,8 @@ function App() {
   const [selectedTech, setSelectedTech] = useState("react");
   const [previewMode, setPreviewMode] = useState("desktop");
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [userComments, setUserComments] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [sessionId, setSessionId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -47,12 +49,27 @@ function App() {
     };
     reader.readAsDataURL(file);
 
-    // Generate code
+    // Store file for later generation
+    setUploadedFile(file);
+    
+    // Clear previous results
+    setGeneratedCode("");
+    setSessionId(null);
+    setChatMessages([]);
+  };
+
+  const handleGenerateCode = async () => {
+    if (!uploadedFile) {
+      alert('Please upload an image first');
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadedFile);
       formData.append('technology', selectedTech);
+      formData.append('comments', userComments);
 
       const response = await axios.post(`${API}/upload-and-generate`, formData, {
         headers: {
@@ -64,7 +81,7 @@ function App() {
       setSessionId(response.data.session_id);
       setChatMessages([{
         type: 'ai',
-        message: `Generated ${selectedTech} code from your screenshot! You can now preview it and ask for modifications.`,
+        message: `Generated ${selectedTech} code from your screenshot! ${userComments ? 'I\'ve incorporated your specific requirements.' : ''} You can now preview it and ask for modifications.`,
         timestamp: new Date().toISOString()
       }]);
 
@@ -325,18 +342,23 @@ function App() {
     };
 
     return (
-      <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-        <div className="bg-gray-50 px-4 py-2 border-b flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Live Preview</span>
+      <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 border-b flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+            <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            <span className="text-white font-medium ml-4">Live Preview</span>
+          </div>
           <div className="flex space-x-2">
             {PREVIEW_MODES.map(mode => (
               <button
                 key={mode.value}
                 onClick={() => setPreviewMode(mode.value)}
-                className={`px-3 py-1 text-xs rounded ${
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 ${
                   previewMode === mode.value
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-white text-indigo-600 shadow-lg'
+                    : 'bg-indigo-400 text-white hover:bg-indigo-300'
                 }`}
               >
                 {mode.icon} {mode.label}
@@ -344,9 +366,9 @@ function App() {
             ))}
           </div>
         </div>
-        <div className="p-4 bg-gray-50 min-h-96">
+        <div className="p-6 bg-gray-50 min-h-96">
           <div 
-            className="bg-white border rounded mx-auto transition-all duration-300 overflow-hidden"
+            className="bg-white border-2 border-gray-300 rounded-lg mx-auto transition-all duration-300 overflow-hidden shadow-inner"
             style={{ 
               width: PREVIEW_MODES.find(m => m.value === previewMode)?.width || '100%',
               maxWidth: '100%'
@@ -368,22 +390,37 @@ function App() {
     );
   };
 
+  const LoadingSpinner = ({ message }) => (
+    <div className="flex flex-col items-center justify-center p-8">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-purple-600 rounded-full animate-spin animation-delay-150"></div>
+      </div>
+      <div className="mt-6 text-center">
+        <p className="text-lg font-semibold text-gray-800">{message}</p>
+        <p className="text-sm text-gray-500 mt-1">This may take a few seconds...</p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Screenshot to Code Generator</h1>
-              <p className="text-gray-600">Upload a UI screenshot and get instant, responsive code</p>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Vision to Code Generator ✨
+              </h1>
+              <p className="text-gray-600 mt-2">Upload a UI screenshot, add your requirements, and get instant, responsive code</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Technology:</label>
+            <div className="flex items-center space-x-6">
+              <label className="text-sm font-semibold text-gray-700">Framework:</label>
               <select
                 value={selectedTech}
                 onChange={(e) => setSelectedTech(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
               >
                 {TECHNOLOGIES.map(tech => (
                   <option key={tech.value} value={tech.value}>
@@ -396,46 +433,59 @@ function App() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Upload Section */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload Screenshot</h2>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Upload & Generation Section */}
+          <div className="xl:col-span-1 space-y-6">
+            {/* Upload Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">1</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Upload Screenshot</h2>
+              </div>
               
               {/* Upload Area */}
               <div
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-                  uploadedImage ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                className={`border-3 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
+                  uploadedImage ? 
+                    'border-green-400 bg-green-50 shadow-inner' : 
+                    'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 cursor-pointer'
                 }`}
               >
                 {uploadedImage ? (
                   <div>
-                    <img src={uploadedImage} alt="Uploaded" className="max-w-full h-48 object-contain mx-auto mb-4" />
+                    <img src={uploadedImage} alt="Uploaded" className="max-w-full h-48 object-contain mx-auto mb-4 rounded-lg shadow-md" />
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm"
                     >
                       Upload Different Image
                     </button>
                   </div>
                 ) : (
                   <div>
-                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <p className="mt-2 text-sm text-gray-600">
-                      Drop your screenshot here, or{" "}
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-lg font-medium text-gray-800 mb-2">
+                      Drop your screenshot here
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      or{" "}
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-indigo-600 hover:text-indigo-800 font-semibold underline"
                       >
-                        click to upload
+                        click to browse
                       </button>
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG up to 10MB</p>
+                    <p className="text-xs text-gray-500 mt-3">PNG, JPG, SVG up to 10MB</p>
                   </div>
                 )}
               </div>
@@ -447,32 +497,75 @@ function App() {
                 accept="image/*"
                 className="hidden"
               />
-
-              {isGenerating && (
-                <div className="mt-4 text-center">
-                  <div className="inline-flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generating {selectedTech} code...
-                  </div>
-                </div>
-              )}
             </div>
+
+            {/* Comments Section */}
+            {uploadedImage && (
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">2</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Add Instructions</h2>
+                </div>
+                
+                <textarea
+                  value={userComments}
+                  onChange={(e) => setUserComments(e.target.value)}
+                  placeholder="Describe your requirements... (e.g., 'Make the navbar sticky', 'Use blue color scheme', 'Add hover effects to buttons')"
+                  className="w-full h-32 p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400"
+                />
+                <p className="text-xs text-gray-500 mt-2">Optional but helps generate better code tailored to your needs</p>
+              </div>
+            )}
+
+            {/* Generate Button */}
+            {uploadedImage && (
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">3</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Generate Code</h2>
+                </div>
+
+                {isGenerating ? (
+                  <LoadingSpinner message={`Generating ${selectedTech} code...`} />
+                ) : (
+                  <button
+                    onClick={handleGenerateCode}
+                    disabled={!uploadedFile}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <div className="flex items-center justify-center space-x-2">
+                      <span>✨ Generate {selectedTech.charAt(0).toUpperCase() + selectedTech.slice(1)} Code</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Selected tech indicator */}
+                <div className="mt-4 text-center">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    TECHNOLOGIES.find(t => t.value === selectedTech)?.color || 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {TECHNOLOGIES.find(t => t.value === selectedTech)?.icon} {TECHNOLOGIES.find(t => t.value === selectedTech)?.label}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Chat Section */}
             {sessionId && (
-              <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Feedback & Adjustments</h2>
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">💬 Feedback & Adjustments</h2>
                 
-                <div className="h-64 overflow-y-auto mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="h-64 overflow-y-auto mb-6 p-4 bg-gray-50 rounded-xl border">
                   {chatMessages.map((msg, index) => (
-                    <div key={index} className={`mb-3 ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
-                      <div className={`inline-block max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                    <div key={index} className={`mb-4 ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
+                      <div className={`inline-block max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-sm ${
                         msg.type === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-800 border'
+                          ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                          : 'bg-white text-gray-800 border-2 border-gray-200'
                       }`}>
                         <p className="text-sm">{msg.message}</p>
                       </div>
@@ -480,30 +573,30 @@ function App() {
                   ))}
                   {isChatting && (
                     <div className="text-left">
-                      <div className="inline-block bg-gray-200 px-4 py-2 rounded-lg">
+                      <div className="inline-block bg-gray-200 px-4 py-3 rounded-xl">
                         <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <form onSubmit={handleChatSubmit} className="flex space-x-2">
+                <form onSubmit={handleChatSubmit} className="flex space-x-3">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask for changes: 'Make button blue', 'Center the header'..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     disabled={isChatting}
                   />
                   <button
                     type="submit"
                     disabled={isChatting || !chatInput.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all duration-200"
                   >
                     Send
                   </button>
@@ -513,22 +606,23 @@ function App() {
           </div>
 
           {/* Preview & Code Section */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-8">
             {generatedCode && renderPreview()}
 
             {generatedCode && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Generated Code</h2>
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">📝 Generated Code</h2>
                   <button
                     onClick={() => navigator.clipboard.writeText(generatedCode)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-semibold transition-all duration-200 flex items-center space-x-2"
                   >
-                    📋 Copy Code
+                    <span>📋</span>
+                    <span>Copy Code</span>
                   </button>
                 </div>
-                <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
-                  <pre className="text-green-400 text-sm">
+                <div className="bg-gray-900 rounded-xl p-6 overflow-x-auto shadow-inner">
+                  <pre className="text-green-400 text-sm font-mono leading-relaxed">
                     <code>{generatedCode}</code>
                   </pre>
                 </div>
@@ -536,14 +630,14 @@ function App() {
             )}
 
             {!generatedCode && !isGenerating && (
-              <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <div className="bg-white rounded-2xl shadow-xl p-16 text-center border border-gray-200">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Generate Code</h3>
-                <p className="text-gray-600">Upload a UI screenshot to get started with AI-powered code generation</p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Ready to Create Magic ✨</h3>
+                <p className="text-gray-600 text-lg">Upload a UI screenshot and watch as AI transforms it into responsive, modern code</p>
               </div>
             )}
           </div>
