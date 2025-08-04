@@ -256,10 +256,10 @@ function App() {
                     try {
                       // Look for JSX return patterns
                       const jsxPatterns = [
-                        /return\\s*\\(([\\s\\S]*?)\\)\\s*;?\\s*}?$/,
-                        /return\\s*([^;\\n]+);?\\s*}?$/,
-                        /=>\\s*\\(([\\s\\S]*?)\\)\\s*;?$/,
-                        /=>\\s*([^;\\n]+);?$/
+                        /return\s*\(([\s\S]*?)\)\s*;?\s*}?$/,
+                        /return\s*([^;\n]+);?\s*}?$/,
+                        /=>\s*\(([\s\S]*?)\)\s*;?$/,
+                        /=>\s*([^;\n]+);?$/
                       ];
                       
                       for (let pattern of jsxPatterns) {
