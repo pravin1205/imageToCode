@@ -550,6 +550,7 @@ def run_all_tests():
         ("File Upload WITH Comments (NEW)", test_file_upload_with_comments),
         ("File Upload WITHOUT Comments", test_file_upload_without_comments),
         ("File Upload with Empty Comments", test_file_upload_empty_comments),
+        ("Comments Integration in AI Prompt", test_comments_integration_in_ai_prompt),
         ("Invalid File Handling", test_invalid_file_upload),
         ("Chat Functionality", test_chat_functionality),
         ("Session Management", test_session_retrieval),
