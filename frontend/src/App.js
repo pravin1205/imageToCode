@@ -162,6 +162,49 @@ function App() {
     }
   };
 
+  // Sanitize component code to prevent JavaScript injection and regex errors
+  const sanitizeComponentCode = (code) => {
+    if (!code) return '';
+    
+    try {
+      // Fix common regex pattern issues that cause "unterminated regular expression" errors
+      let sanitized = code;
+      
+      // Escape any malformed regex patterns
+      // Look for potential problematic regex patterns and fix them
+      sanitized = sanitized.replace(/\/([^\/\n]*)\[([^\]]*)(;|$)/g, (match, before, inside, after) => {
+        // If we find a regex-like pattern that's incomplete, try to fix it
+        if (!inside.includes(']')) {
+          return `/${before}[${inside}]/${after}`;
+        }
+        return match;
+      });
+      
+      // Fix incomplete regex patterns like /returns*([^;
+      sanitized = sanitized.replace(/\/([^\/\n]*)\(\[\^([^;\]]*)(;|\)|$)/g, (match, before, inside, after) => {
+        // Complete the character class and regex
+        return `/${before}([^${inside}])${after}`;
+      });
+      
+      // Remove any incomplete regex literals that start with / but don't have closing /
+      sanitized = sanitized.replace(/\/[^\/\n]*\[([^\]\/\n]*)(;|\n|$)/g, (match) => {
+        // If it looks like an incomplete regex, comment it out
+        return `/* ${match.trim()} */`;
+      });
+      
+      // Escape template literal backticks that could break the iframe template
+      sanitized = sanitized.replace(/`/g, '\\`');
+      
+      // Escape ${} template expressions to prevent injection
+      sanitized = sanitized.replace(/\$\{/g, '\\${');
+      
+      return sanitized;
+    } catch (error) {
+      console.error('Error sanitizing component code:', error);
+      return code; // Return original if sanitization fails
+    }
+  };
+
   const renderPreview = () => {
     if (!generatedCode) return null;
 
