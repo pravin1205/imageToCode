@@ -141,7 +141,6 @@ Generate ONLY the HTML/CSS/JS code, no explanations.
 def create_gemini_chat(session_id: str = None):
     """Create a Gemini chat instance"""
     return LlmChat(
-        model="gemini-2.5-flash", 
         api_key=GEMINI_API_KEY
     )
 
