@@ -238,7 +238,7 @@ function App() {
         
         console.log('Final componentCode for iframe injection:', componentCode.substring(0, 300));
         
-          <!DOCTYPE html>
+        return `<!DOCTYPE html>
           <html>
           <head>
             <meta charset="utf-8">
