@@ -254,6 +254,8 @@ function App() {
           </head>
           <body>
             <div id="root"></div>
+            <script id="component-code" type="text/plain">${componentCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</script>
+            
             <script>
               // Make React hooks and utilities available globally BEFORE Babel transformation
               window.React = React;
@@ -273,9 +275,6 @@ function App() {
               window.Component = React.Component;
               window.PureComponent = React.PureComponent;
               window.Fragment = React.Fragment;
-              
-              // Global error handler for component execution
-              window.componentExecutionError = null;
             </script>
             
             <script type="text/babel">
@@ -283,47 +282,71 @@ function App() {
                 // Add React import for JSX transformation
                 const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
                 
-                // Component code with proper JSX transformation
-                ${componentCode}
+                // Get component code from script tag to avoid template literal conflicts
+                const componentCodeElement = document.getElementById('component-code');
+                const componentCode = componentCodeElement.textContent
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>');
                 
-                // Auto-detect and render component after Babel transformation
+                console.log('Component code retrieved for Babel transformation:', componentCode.substring(0, 200) + '...');
+                
+                // Use Function constructor to safely execute the transformed code
+                // This avoids template literal issues while allowing Babel to transform JSX
+                const ComponentModule = {};
+                const componentFunction = new Function('React', 'useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'module', 'exports', componentCode + '; return this;');
+                
+                // Execute the component code in a safe context
+                const executionContext = componentFunction.call(ComponentModule, React, useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef, ComponentModule, ComponentModule);
+                
+                // Auto-detect and render component after execution
                 setTimeout(() => {
                   try {
                     const root = ReactDOM.createRoot(document.getElementById('root'));
                     let ComponentToRender = null;
                     let componentName = '';
                     
-                    // Look for component functions in global scope
+                    // Look for component functions in the execution context and global scope
                     const componentPatterns = [
                       /(?:function|const|let|var)\\s+(\\w+)/g,
                       /const\\s+(\\w+)\\s*=\\s*\\(.*?\\)\\s*=>/g,
                       /const\\s+(\\w+)\\s*=\\s*function/g
                     ];
                     
-                    const componentCode = \`${componentCode}\`;
-                    
-                    for (let pattern of componentPatterns) {
-                      let match;
-                      while ((match = pattern.exec(componentCode)) !== null) {
-                        const name = match[1];
-                        if (name && typeof window[name] === 'function' && 
-                            name !== 'useState' && name !== 'useEffect' && 
-                            name !== 'useContext' && name !== 'useCallback' &&
-                            name !== 'useMemo' && name !== 'useRef') {
-                          ComponentToRender = window[name];
-                          componentName = name;
-                          console.log('Found component:', componentName);
-                          break;
-                        }
+                    // First check the execution context
+                    for (let key in executionContext) {
+                      if (typeof executionContext[key] === 'function' && key !== 'useState' && key !== 'useEffect') {
+                        ComponentToRender = executionContext[key];
+                        componentName = key;
+                        console.log('Found component in execution context:', componentName);
+                        break;
                       }
-                      if (ComponentToRender) break;
+                    }
+                    
+                    // If not found, check global scope
+                    if (!ComponentToRender) {
+                      for (let pattern of componentPatterns) {
+                        let match;
+                        while ((match = pattern.exec(componentCode)) !== null) {
+                          const name = match[1];
+                          if (name && typeof window[name] === 'function' && 
+                              name !== 'useState' && name !== 'useEffect' && 
+                              name !== 'useContext' && name !== 'useCallback' &&
+                              name !== 'useMemo' && name !== 'useRef') {
+                            ComponentToRender = window[name];
+                            componentName = name;
+                            console.log('Found component in global scope:', componentName);
+                            break;
+                          }
+                        }
+                        if (ComponentToRender) break;
+                      }
                     }
                     
                     if (ComponentToRender) {
                       console.log('Rendering component:', componentName);
                       root.render(React.createElement(ComponentToRender));
                     } else {
-                      // Fallback: create a simple wrapper to render any JSX found
+                      // Enhanced fallback: try to extract and render JSX directly
                       function AutoDetectedComponent() {
                         try {
                           // Look for return statements with JSX
