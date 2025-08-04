@@ -181,80 +181,101 @@ function App() {
             <div id="root"></div>
             <script type="text/babel">
               try {
-                // Make React hooks available globally
-                const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef, useImperativeHandle, useLayoutEffect, useDebugValue } = React;
+                // Make React hooks and utilities available globally  
+                window.React = React;
+                window.useState = React.useState;
+                window.useEffect = React.useEffect;
+                window.useContext = React.useContext;
+                window.useReducer = React.useReducer;
+                window.useCallback = React.useCallback;
+                window.useMemo = React.useMemo;
+                window.useRef = React.useRef;
+                window.useImperativeHandle = React.useImperativeHandle;
+                window.useLayoutEffect = React.useLayoutEffect;
+                window.useDebugValue = React.useDebugValue;
                 
-                // Also make common React functions available
-                const { createElement, Component, PureComponent, Fragment } = React;
+                // Make React functions available
+                window.createElement = React.createElement;
+                window.Component = React.Component;
+                window.PureComponent = React.PureComponent;
+                window.Fragment = React.Fragment;
                 
+                // Execute the component code in global scope
                 ${componentCode}
                 
-                // Try to extract and render the component
+                // Enhanced component detection and rendering
                 let ComponentToRender;
+                let componentName;
                 
-                // Look for function component
-                const funcMatch = componentCode.match(/function\\s+(\\w+)/);
-                if (funcMatch) {
-                  ComponentToRender = window[funcMatch[1]];
-                }
+                // Look for various component patterns
+                const patterns = [
+                  /(?:function|const|let|var)\\s+(\\w+)/g,
+                  /const\\s+(\\w+)\\s*=\\s*\\(.*?\\)\\s*=>/g,
+                  /const\\s+(\\w+)\\s*=\\s*function/g
+                ];
                 
-                // Look for const component
-                if (!ComponentToRender) {
-                  const constMatch = componentCode.match(/const\\s+(\\w+)\\s*=/);
-                  if (constMatch) {
-                    ComponentToRender = window[constMatch[1]];
+                for (let pattern of patterns) {
+                  let match;
+                  while ((match = pattern.exec(componentCode)) !== null) {
+                    const name = match[1];
+                    if (name && typeof window[name] === 'function' && name !== 'useState' && name !== 'useEffect') {
+                      ComponentToRender = window[name];
+                      componentName = name;
+                      break;
+                    }
                   }
+                  if (ComponentToRender) break;
                 }
                 
-                // Look for arrow function component
-                if (!ComponentToRender) {
-                  const arrowMatch = componentCode.match(/const\\s+(\\w+)\\s*=.*=>/);
-                  if (arrowMatch) {
-                    ComponentToRender = window[arrowMatch[1]];
-                  }
-                }
+                // Try to render the component
+                const root = ReactDOM.createRoot(document.getElementById('root'));
                 
-                // If we found a component, render it
-                if (ComponentToRender && typeof ComponentToRender === 'function') {
-                  const root = ReactDOM.createRoot(document.getElementById('root'));
+                if (ComponentToRender) {
+                  console.log('Rendering component:', componentName);
                   root.render(React.createElement(ComponentToRender));
                 } else {
-                  // Fallback: try to execute the code and render any JSX return
-                  const root = ReactDOM.createRoot(document.getElementById('root'));
-                  
-                  // Create a wrapper component that executes the generated code
-                  function GeneratedComponent() {
+                  // Enhanced fallback: try to extract and execute JSX directly
+                  function FallbackComponent() {
                     try {
-                      // If the code has a return statement with JSX, extract it
-                      const returnMatch = componentCode.match(/return\\s*\\(([\\s\\S]*?)\\);?$/);
-                      if (returnMatch) {
-                        // Extract JSX content
-                        const jsxContent = returnMatch[1].trim();
-                        return eval('(' + jsxContent + ')');
-                      } else if (componentCode.includes('return')) {
-                        // Simple return statement
-                        const simpleReturnMatch = componentCode.match(/return\\s*([^;]+);?$/);
-                        if (simpleReturnMatch) {
-                          return eval(simpleReturnMatch[1]);
+                      // Look for JSX return patterns
+                      const jsxPatterns = [
+                        /return\\s*\\(([\\s\\S]*?)\\)\\s*;?\\s*}?$/,
+                        /return\\s*([^;\\n]+);?\\s*}?$/,
+                        /=>\\s*\\(([\\s\\S]*?)\\)\\s*;?$/,
+                        /=>\\s*([^;\\n]+);?$/
+                      ];
+                      
+                      for (let pattern of jsxPatterns) {
+                        const match = componentCode.match(pattern);
+                        if (match) {
+                          const jsxContent = match[1].trim();
+                          console.log('Found JSX content:', jsxContent);
+                          
+                          // Try to evaluate the JSX
+                          const result = eval('(' + jsxContent + ')');
+                          if (result) return result;
                         }
                       }
                       
-                      // If no return found, wrap the code in a div
-                      return React.createElement('div', {className: 'p-4'}, 
-                        React.createElement('pre', {className: 'bg-gray-100 p-4 rounded'}, componentCode)
-                      );
+                      // If still no luck, show a message
+                      return React.createElement('div', {
+                        className: 'p-4 bg-yellow-50 border border-yellow-200 rounded'
+                      }, 'Preview available - component detected but needs manual rendering. Check the generated code below.');
+                      
                     } catch (error) {
+                      console.error('Fallback rendering error:', error);
                       return React.createElement('div', {
                         className: 'p-4 bg-red-50 border border-red-200 rounded text-red-700'
                       }, 'Preview Error: ' + error.message);
                     }
                   }
                   
-                  root.render(React.createElement(GeneratedComponent));
+                  root.render(React.createElement(FallbackComponent));
                 }
               } catch (error) {
                 console.error('Preview error:', error);
-                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #ef4444; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui;">Preview Error: ' + error.message + '<br><br>Generated Code:<br><pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px; overflow: auto;">' + \`${componentCode.replace(/\`/g, '\\`')}\` + '</pre></div>';
+                const errorMsg = 'Preview Error: ' + error.message + '\\n\\nGenerated Code:\\n' + \`${componentCode}\`;
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui; white-space: pre-wrap; font-size: 14px;">' + errorMsg + '</div>';
               }
             </script>
           </body>
