@@ -255,7 +255,7 @@ function App() {
           <body>
             <div id="root"></div>
             <script>
-              // Make React hooks and utilities available globally BEFORE Babel transformation
+              // Make React hooks and utilities available globally
               window.React = React;
               window.useState = React.useState;
               window.useEffect = React.useEffect;
@@ -274,131 +274,110 @@ function App() {
               window.PureComponent = React.PureComponent;
               window.Fragment = React.Fragment;
               
-              // Store component code for Babel to process
-              window.componentCodeToProcess = \`${componentCode.replace(/`/g, '\\`').replace(/\${/g, '\\${')}\`;
-              
-              console.log('Stored component code for Babel processing:', window.componentCodeToProcess.substring(0, 200) + '...');
+              console.log('React environment setup complete for Babel transformation');
             </script>
             
             <script type="text/babel">
-              {/* 
-                This script lets Babel transform JSX properly by having the code directly in the script.
-                We use template literals with the stored component code to avoid conflicts.
-              */}
-              
+              // Direct JSX code injection - let Babel transform everything properly
               const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
               
-              // Process the component code - this will be transformed by Babel
-              try {
-                // Execute the component code in Babel context
-                eval(window.componentCodeToProcess);
-                
-                // Auto-detect component and render after a short delay to ensure everything is loaded
-                setTimeout(() => {
-                  try {
-                    const root = ReactDOM.createRoot(document.getElementById('root'));
-                    let ComponentToRender = null;
-                    let componentName = '';
+              // === GENERATED COMPONENT CODE STARTS HERE ===
+              ${componentCode}
+              // === GENERATED COMPONENT CODE ENDS HERE ===
+              
+              // Auto-detect and render component after Babel transformation
+              setTimeout(() => {
+                try {
+                  const root = ReactDOM.createRoot(document.getElementById('root'));
+                  let ComponentToRender = null;
+                  let componentName = '';
+                  
+                  // Enhanced component detection - check all possible component patterns
+                  const componentPatterns = [
+                    // Arrow function components: const ComponentName = () => { ... }
+                    { pattern: /const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g, type: 'arrow' },
+                    // Function declarations: function ComponentName() { ... }
+                    { pattern: /function\\s+(\\w+)\\s*\\([^)]*\\)/g, type: 'function' },
+                    // Variable function assignments: const ComponentName = function() { ... }
+                    { pattern: /const\\s+(\\w+)\\s*=\\s*function/g, type: 'variable' }
+                  ];
+                  
+                  const excludedNames = ['useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'console', 'alert', 'setTimeout', 'setInterval'];
+                  
+                  // Try each pattern to find components
+                  for (let patternObj of componentPatterns) {
+                    const { pattern, type } = patternObj;
+                    let match;
                     
-                    // Try to find the main component by looking for common patterns
-                    const possibleComponents = [];
-                    
-                    // Check for arrow function components
-                    const arrowMatches = window.componentCodeToProcess.match(/const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g);
-                    if (arrowMatches) {
-                      arrowMatches.forEach(match => {
-                        const name = match.match(/const\\s+(\\w+)/)[1];
-                        if (window[name] && typeof window[name] === 'function') {
-                          possibleComponents.push({ name, component: window[name] });
-                        }
-                      });
+                    while ((match = pattern.exec(\`${componentCode}\`)) !== null) {
+                      const name = match[1];
+                      
+                      if (name && !excludedNames.includes(name) && typeof window[name] === 'function') {
+                        ComponentToRender = window[name];
+                        componentName = name;
+                        console.log(\`Found \${type} component: \${componentName}\`);
+                        break;
+                      }
                     }
                     
-                    // Check for function declarations
-                    const functionMatches = window.componentCodeToProcess.match(/function\\s+(\\w+)\\s*\\([^)]*\\)/g);
-                    if (functionMatches) {
-                      functionMatches.forEach(match => {
-                        const name = match.match(/function\\s+(\\w+)/)[1];
-                        if (window[name] && typeof window[name] === 'function') {
-                          possibleComponents.push({ name, component: window[name] });
-                        }
-                      });
-                    }
-                    
-                    // Filter out React hooks and built-in functions
-                    const validComponents = possibleComponents.filter(comp => 
-                      comp.name !== 'useState' && comp.name !== 'useEffect' && 
-                      comp.name !== 'useContext' && comp.name !== 'useCallback' &&
-                      comp.name !== 'useMemo' && comp.name !== 'useRef' &&
-                      comp.name !== 'console' && comp.name !== 'alert'
-                    );
-                    
-                    if (validComponents.length > 0) {
-                      // Use the first valid component found
-                      const selectedComponent = validComponents[0];
-                      ComponentToRender = selectedComponent.component;
-                      componentName = selectedComponent.name;
-                      console.log('Auto-detected component:', componentName);
-                    }
-                    
-                    if (ComponentToRender) {
-                      console.log('Rendering component:', componentName);
-                      root.render(<ComponentToRender />);
-                    } else {
-                      // Enhanced fallback: render a helpful message
-                      const FallbackComponent = () => (
-                        <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-lg max-w-md mx-auto">
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <span className="text-white text-2xl">✓</span>
-                            </div>
-                            <h3 className="text-xl font-bold text-blue-800 mb-3">Code Generated Successfully!</h3>
-                            <p className="text-blue-600 mb-4">
-                              The React component has been generated and processed. The code is ready to use.
-                            </p>
-                            <div className="bg-blue-100 p-3 rounded-lg text-sm text-blue-700">
-                              <strong>Component detected:</strong> {possibleComponents.length} function(s) found
-                            </div>
+                    if (ComponentToRender) break;
+                  }
+                  
+                  // Render the component or fallback
+                  if (ComponentToRender) {
+                    console.log('Rendering detected component:', componentName);
+                    root.render(<ComponentToRender />);
+                  } else {
+                    // Show success message if no component detected but code executed successfully  
+                    const SuccessComponent = () => (
+                      <div className="flex items-center justify-center min-h-[200px] p-6">
+                        <div className="max-w-md mx-auto text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
+                          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <h3 className="text-xl font-bold text-green-800 mb-3">Code Generated Successfully!</h3>
+                          <p className="text-green-600 mb-4">
+                            Your React component has been generated and processed without errors.
+                          </p>
+                          <div className="bg-green-100 p-3 rounded-lg text-sm text-green-700">
+                            <strong>Status:</strong> Code compiled and ready to use
                           </div>
                         </div>
-                      );
-                      
-                      console.log('Rendering fallback component - code processed successfully');
-                      root.render(<FallbackComponent />);
-                    }
-                    
-                  } catch (renderError) {
-                    console.error('Component render error:', renderError);
-                    const root = ReactDOM.createRoot(document.getElementById('root'));
-                    
-                    const ErrorComponent = () => (
-                      <div className="p-6 bg-red-50 border-2 border-red-200 rounded-xl max-w-md mx-auto">
-                        <h3 className="text-lg font-bold text-red-800 mb-3">Render Error</h3>
-                        <p className="text-red-600 mb-3">There was an error rendering the component:</p>
-                        <pre className="bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32">
-                          {renderError.message}
-                        </pre>
                       </div>
                     );
                     
-                    root.render(<ErrorComponent />);
+                    console.log('No component auto-detected, showing success message');
+                    root.render(<SuccessComponent />);
                   }
-                }, 100);
-                
-              } catch (transformError) {
-                console.error('Babel transformation error:', transformError);
-                
-                // Render error message using vanilla JS since Babel failed
-                setTimeout(() => {
-                  document.getElementById('root').innerHTML = \`
-                    <div style="padding: 24px; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 2px solid #fecaca; border-radius: 12px; max-width: 400px; margin: 20px auto; font-family: system-ui;">
-                      <h3 style="color: #991b1b; font-size: 18px; font-weight: bold; margin-bottom: 12px;">Transformation Error</h3>
-                      <p style="color: #dc2626; margin-bottom: 12px;">There was an error processing the JSX code:</p>
-                      <pre style="background: #fee; padding: 12px; border-radius: 6px; font-size: 12px; color: #991b1b; overflow: auto; max-height: 120px;">\${transformError.message}</pre>
+                  
+                } catch (renderError) {
+                  console.error('Component render error:', renderError);
+                  
+                  const ErrorComponent = () => (
+                    <div className="flex items-center justify-center min-h-[200px] p-6">
+                      <div className="max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </div>
+                          <h3 className="text-lg font-bold text-red-800 mb-3">Render Error</h3>
+                          <p className="text-red-600 mb-3">There was an error rendering the component:</p>
+                          <pre className="bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left">
+                            {renderError.message}
+                          </pre>
+                        </div>
+                      </div>
                     </div>
-                  \`;
-                }, 100);
-              }
+                  );
+                  
+                  const root = ReactDOM.createRoot(document.getElementById('root'));
+                  root.render(<ErrorComponent />);
+                }
+              }, 100);
             </script>
           </body>
           </html>
