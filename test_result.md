@@ -243,11 +243,11 @@ frontend:
 
   - task: "Live preview system"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -258,6 +258,9 @@ frontend:
       - working: true
         agent: "main"
         comment: "FIXED: Enhanced React hooks import system in iframe. Made all React hooks and utilities available globally in window object. Improved component detection with multiple patterns. Added enhanced fallback rendering for JSX extraction. Fixed preview rendering for all frameworks."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ISSUE PERSISTS: Live Preview iframe still renders blank despite having substantial srcDoc content (8487 chars). Root cause identified: JavaScript regex syntax error in iframe code causing 'Unterminated regular expression' error at line 135. The malformed regex pattern '/returns*([^;' is breaking the entire script execution, preventing React component rendering. The #root element exists but remains empty. This is the exact issue reported in the review request - iframe appears blank/white despite proper setup."
 
   - task: "Responsive preview tabs"
     implemented: true
