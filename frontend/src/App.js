@@ -391,47 +391,68 @@ function App() {
           </body>
           </html>
         `;
-      }
-      
-      // For HTML/CSS/JS
-      if (selectedTech === 'html') {
-        return previewContent.includes('<!DOCTYPE') ? previewContent : `
+        }
+        
+        // For HTML/CSS/JS
+        if (selectedTech === 'html') {
+          return previewContent.includes('<!DOCTYPE') ? previewContent : `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; }
+              </style>
+            </head>
+            <body>
+              ${previewContent}
+            </body>
+            </html>
+          `;
+        }
+        
+        // For other frameworks, show code as text for now
+        return `
           <!DOCTYPE html>
           <html>
           <head>
             <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-              body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; }
+              body { margin: 0; padding: 20px; font-family: monospace; background: #f8f9fa; }
+              .code-preview { background: white; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; }
+              pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
             </style>
           </head>
           <body>
-            ${previewContent}
+            <div class="code-preview">
+              <h3>Generated ${selectedTech.toUpperCase()} Code:</h3>
+              <pre>${previewContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+            </div>
+          </body>
+          </html>
+        `;
+      } catch (error) {
+        console.error('Error creating preview HTML:', error);
+        return `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { margin: 0; padding: 20px; font-family: system-ui; }
+              .error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; color: #c00; }
+            </style>
+          </head>
+          <body>
+            <div class="error">
+              <h3>Preview Error</h3>
+              <p>There was an error generating the preview: ${error.message}</p>
+            </div>
           </body>
           </html>
         `;
       }
-      
-      // For other frameworks, show code as text for now
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { margin: 0; padding: 20px; font-family: monospace; background: #f8f9fa; }
-            .code-preview { background: white; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; }
-            pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
-          </style>
-        </head>
-        <body>
-          <div class="code-preview">
-            <h3>Generated ${selectedTech.toUpperCase()} Code:</h3>
-            <pre>${previewContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-          </div>
-        </body>
-        </html>
-      `;
     };
 
     return (
