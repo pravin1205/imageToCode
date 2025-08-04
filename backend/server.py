@@ -174,7 +174,7 @@ async def get_status_checks():
     return [StatusCheck(**status_check) for status_check in status_checks]
 
 @api_router.post("/upload-and-generate")
-async def upload_and_generate_code(file: UploadFile = File(...), technology: str = "react"):
+async def upload_and_generate_code(file: UploadFile = File(...), technology: str = "react", comments: str = ""):
     try:
         # Validate file type
         if not file.content_type.startswith('image/'):
@@ -193,6 +193,11 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
         # Get framework-specific prompt
         system_prompt = FRAMEWORK_TEMPLATES.get(technology, FRAMEWORK_TEMPLATES["react"])
         
+        # Add user comments to the prompt if provided
+        user_requirements = ""
+        if comments and comments.strip():
+            user_requirements = f"\n\nAdditional Requirements from User:\n{comments.strip()}\n\nPlease incorporate these requirements into the generated code."
+        
         # Save image temporarily for processing
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
@@ -201,7 +206,7 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
         
         # Create message with image
         user_message = UserMessage(
-            text=system_prompt + f"\n\nGenerate {technology} code for this UI screenshot.",
+            text=system_prompt + f"\n\nGenerate {technology} code for this UI screenshot.{user_requirements}",
             file_contents=[FileContentWithMimeType(
                 mime_type=file.content_type,
                 file_path=temp_file_path
@@ -222,7 +227,7 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
             generated_code=generated_code,
             chat_messages=[{
                 "type": "ai",
-                "message": f"Generated {technology} code from your screenshot",
+                "message": f"Generated {technology} code from your screenshot" + (" with your specific requirements!" if comments.strip() else ""),
                 "timestamp": datetime.utcnow().isoformat()
             }]
         )
@@ -233,7 +238,8 @@ async def upload_and_generate_code(file: UploadFile = File(...), technology: str
             "session_id": session_id,
             "code": generated_code,
             "technology": technology,
-            "image_base64": image_base64
+            "image_base64": image_base64,
+            "comments": comments
         }
         
     except HTTPException:
