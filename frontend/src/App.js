@@ -400,7 +400,12 @@ function App() {
         
         // For HTML/CSS/JS
         if (selectedTech === 'html') {
-          return previewContent.includes('<!DOCTYPE') ? previewContent : `
+          // Clean markdown formatting from HTML code
+          let cleanedContent = previewContent;
+          cleanedContent = cleanedContent.replace(/```(html|css|js|javascript)?\s*\n?/g, '');
+          cleanedContent = cleanedContent.replace(/```\s*$/g, '');
+          
+          return cleanedContent.includes('<!DOCTYPE') ? cleanedContent : `
             <!DOCTYPE html>
             <html>
             <head>
@@ -411,7 +416,7 @@ function App() {
               </style>
             </head>
             <body>
-              ${previewContent}
+              ${cleanedContent}
             </body>
             </html>
           `;
