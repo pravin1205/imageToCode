@@ -228,6 +228,11 @@ function App() {
         // Extract the component code and clean it
         let componentCode = previewContent;
         
+        // CRITICAL FIX: Remove markdown code blocks that cause JavaScript syntax errors
+        // Remove ```jsx, ```javascript, ```js, and ``` markers
+        componentCode = componentCode.replace(/```(jsx|javascript|js|react)?\s*\n?/g, '');
+        componentCode = componentCode.replace(/```\s*$/g, '');
+        
         // Remove export statements and clean the code
         componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
         componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
