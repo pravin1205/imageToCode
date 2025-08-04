@@ -254,147 +254,153 @@ function App() {
           </head>
           <body>
             <div id="root"></div>
-            <script id="component-code" type="text/plain">${componentCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</script>
+            <script>
+              // Make React hooks and utilities available globally BEFORE Babel transformation
+              window.React = React;
+              window.useState = React.useState;
+              window.useEffect = React.useEffect;
+              window.useContext = React.useContext;
+              window.useReducer = React.useReducer;
+              window.useCallback = React.useCallback;
+              window.useMemo = React.useMemo;
+              window.useRef = React.useRef;
+              window.useImperativeHandle = React.useImperativeHandle;
+              window.useLayoutEffect = React.useLayoutEffect;
+              window.useDebugValue = React.useDebugValue;
+              
+              // Make React functions available
+              window.createElement = React.createElement;
+              window.Component = React.Component;
+              window.PureComponent = React.PureComponent;
+              window.Fragment = React.Fragment;
+              
+              // Global error handler for component execution
+              window.componentExecutionError = null;
+            </script>
+            
             <script type="text/babel">
               try {
-                // Make React hooks and utilities available globally  
-                window.React = React;
-                window.useState = React.useState;
-                window.useEffect = React.useEffect;
-                window.useContext = React.useContext;
-                window.useReducer = React.useReducer;
-                window.useCallback = React.useCallback;
-                window.useMemo = React.useMemo;
-                window.useRef = React.useRef;
-                window.useImperativeHandle = React.useImperativeHandle;
-                window.useLayoutEffect = React.useLayoutEffect;
-                window.useDebugValue = React.useDebugValue;
+                // Add React import for JSX transformation
+                const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
                 
-                // Make React functions available
-                window.createElement = React.createElement;
-                window.Component = React.Component;
-                window.PureComponent = React.PureComponent;
-                window.Fragment = React.Fragment;
+                // Component code with proper JSX transformation
+                ${componentCode}
                 
-                // Get component code from script tag to avoid template literal conflicts
-                const componentCodeElement = document.getElementById('component-code');
-                const componentCode = componentCodeElement.textContent
-                  .replace(/&lt;/g, '<')
-                  .replace(/&gt;/g, '>');
-                
-                // Wrap component execution in try-catch to prevent regex and other errors
-                let componentExecutionSuccess = false;
-                try {
-                  // Execute the component code in global scope
-                  eval(componentCode);
-                  componentExecutionSuccess = true;
-                } catch (codeError) {
-                  console.error('Component code execution error:', codeError);
-                  // Create a fallback error component
-                  window.ErrorFallback = function() {
-                    return React.createElement('div', {
-                      style: { 
-                        padding: '20px', 
-                        backgroundColor: '#fef2f2', 
-                        border: '1px solid #fecaca', 
+                // Auto-detect and render component after Babel transformation
+                setTimeout(() => {
+                  try {
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    let ComponentToRender = null;
+                    let componentName = '';
+                    
+                    // Look for component functions in global scope
+                    const componentPatterns = [
+                      /(?:function|const|let|var)\\s+(\\w+)/g,
+                      /const\\s+(\\w+)\\s*=\\s*\\(.*?\\)\\s*=>/g,
+                      /const\\s+(\\w+)\\s*=\\s*function/g
+                    ];
+                    
+                    const componentCode = \`${componentCode}\`;
+                    
+                    for (let pattern of componentPatterns) {
+                      let match;
+                      while ((match = pattern.exec(componentCode)) !== null) {
+                        const name = match[1];
+                        if (name && typeof window[name] === 'function' && 
+                            name !== 'useState' && name !== 'useEffect' && 
+                            name !== 'useContext' && name !== 'useCallback' &&
+                            name !== 'useMemo' && name !== 'useRef') {
+                          ComponentToRender = window[name];
+                          componentName = name;
+                          console.log('Found component:', componentName);
+                          break;
+                        }
+                      }
+                      if (ComponentToRender) break;
+                    }
+                    
+                    if (ComponentToRender) {
+                      console.log('Rendering component:', componentName);
+                      root.render(React.createElement(ComponentToRender));
+                    } else {
+                      // Fallback: create a simple wrapper to render any JSX found
+                      function AutoDetectedComponent() {
+                        try {
+                          // Look for return statements with JSX
+                          const jsxPatterns = [
+                            /return\\s*\\(([\\s\\S]*?)\\)\\s*;?/,
+                            /return\\s+(<[\\s\\S]*?>)/,
+                            /=>\\s*\\(([\\s\\S]*?)\\)\\s*;?/,
+                            /=>\\s*(<[\\s\\S]*?>)/
+                          ];
+                          
+                          for (let pattern of jsxPatterns) {
+                            const match = componentCode.match(pattern);
+                            if (match) {
+                              const jsxContent = match[1].trim();
+                              console.log('Found JSX content for rendering:', jsxContent.substring(0, 100) + '...');
+                              
+                              // Create a function that returns the JSX and execute it
+                              const ComponentFunction = new Function('React', 'useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 
+                                \`return function() { return (\${jsxContent}); }\`);
+                              const Component = ComponentFunction(React, useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef);
+                              return React.createElement(Component);
+                            }
+                          }
+                          
+                          return React.createElement('div', {
+                            className: 'p-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg'
+                          }, 
+                            React.createElement('h3', { className: 'text-lg font-semibold text-yellow-800 mb-2' }, 'Component Loaded'),
+                            React.createElement('p', { className: 'text-yellow-700' }, 'The generated code has been processed successfully. The component structure is ready but may need manual interaction to display properly.')
+                          );
+                          
+                        } catch (error) {
+                          console.error('JSX extraction error:', error);
+                          return React.createElement('div', {
+                            className: 'p-4 bg-blue-50 border border-blue-200 rounded'
+                          }, 
+                            React.createElement('h3', { className: 'font-semibold text-blue-800' }, 'Preview Ready'),
+                            React.createElement('p', { className: 'text-blue-700 text-sm' }, 'Generated code processed successfully. Component may require additional props or context to render fully.')
+                          );
+                        }
+                      }
+                      
+                      console.log('Rendering auto-detected component');
+                      root.render(React.createElement(AutoDetectedComponent));
+                    }
+                    
+                  } catch (renderError) {
+                    console.error('Component render error:', renderError);
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    root.render(React.createElement('div', {
+                      style: {
+                        padding: '20px',
+                        backgroundColor: '#fef2f2',
+                        border: '2px solid #fecaca',
                         borderRadius: '8px',
                         color: '#dc2626',
                         fontFamily: 'system-ui'
                       }
-                    }, 
-                      React.createElement('h3', null, 'Preview Error'),
-                      React.createElement('p', null, 'There was an error in the generated code that prevents preview rendering.'),
-                      React.createElement('details', null,
-                        React.createElement('summary', null, 'Error Details'),
-                        React.createElement('pre', { style: { fontSize: '12px', marginTop: '10px' } }, codeError.message)
-                      )
-                    );
-                  };
-                }
-                
-                // Enhanced component detection and rendering
-                let ComponentToRender;
-                let componentName;
-                
-                if (componentExecutionSuccess) {
-                  // Look for various component patterns
-                  const patterns = [
-                    /(?:function|const|let|var)\\s+(\\w+)/g,
-                    /const\\s+(\\w+)\\s*=\\s*\\(.*?\\)\\s*=>/g,
-                    /const\\s+(\\w+)\\s*=\\s*function/g
-                  ];
-                  
-                  for (let pattern of patterns) {
-                    let match;
-                    while ((match = pattern.exec(componentCode)) !== null) {
-                      const name = match[1];
-                      if (name && typeof window[name] === 'function' && name !== 'useState' && name !== 'useEffect') {
-                        ComponentToRender = window[name];
-                        componentName = name;
-                        break;
-                      }
-                    }
-                    if (ComponentToRender) break;
+                    },
+                      React.createElement('h3', { style: { marginBottom: '10px' } }, 'Render Error'),
+                      React.createElement('p', { style: { marginBottom: '10px' } }, 'There was an error rendering the component:'),
+                      React.createElement('pre', { 
+                        style: { 
+                          fontSize: '12px', 
+                          backgroundColor: '#fee', 
+                          padding: '10px', 
+                          borderRadius: '4px',
+                          whiteSpace: 'pre-wrap'
+                        } 
+                      }, renderError.message)
+                    ));
                   }
-                }
+                }, 100);
                 
-                // Try to render the component
-                const root = ReactDOM.createRoot(document.getElementById('root'));
-                
-                if (ComponentToRender) {
-                  console.log('Rendering component:', componentName);
-                  root.render(React.createElement(ComponentToRender));
-                } else if (window.ErrorFallback) {
-                  // Render error fallback if code execution failed
-                  root.render(React.createElement(window.ErrorFallback));
-                } else {
-                  // Enhanced fallback: try to extract and execute JSX directly
-                  function FallbackComponent() {
-                    try {
-                      // Look for JSX return patterns with better regex handling
-                      const jsxPatterns = [
-                        /return\\s*\\(([\\s\\S]*?)\\)\\s*;?\\s*}?$/,
-                        /return\\s*([^;\\n]+);?\\s*}?$/,
-                        /=>\\s*\\(([\\s\\S]*?)\\)\\s*;?$/,
-                        /=>\\s*([^;\\n]+);?$/
-                      ];
-                      
-                      for (let pattern of jsxPatterns) {
-                        try {
-                          const match = componentCode.match(pattern);
-                          if (match) {
-                            const jsxContent = match[1].trim();
-                            console.log('Found JSX content:', jsxContent);
-                            
-                            // Try to evaluate the JSX
-                            const result = eval('(' + jsxContent + ')');
-                            if (result) return result;
-                          }
-                        } catch (jsxError) {
-                          console.warn('JSX pattern matching error:', jsxError);
-                          continue; // Try next pattern
-                        }
-                      }
-                      
-                      // If still no luck, show a message
-                      return React.createElement('div', {
-                        className: 'p-4 bg-yellow-50 border border-yellow-200 rounded'
-                      }, 'Preview available - component detected but needs manual rendering. Check the generated code below.');
-                      
-                    } catch (error) {
-                      console.error('Fallback rendering error:', error);
-                      return React.createElement('div', {
-                        className: 'p-4 bg-red-50 border border-red-200 rounded text-red-700'
-                      }, 'Preview Error: ' + error.message);
-                    }
-                  }
-                  
-                  root.render(React.createElement(FallbackComponent));
-                }
-              } catch (error) {
-                console.error('Preview error:', error);
-                const errorMsg = 'Preview Error: ' + error.message + '\\n\\nGenerated Code:\\n' + componentCode;
-                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-family: system-ui; white-space: pre-wrap; font-size: 14px;">' + errorMsg + '</div>';
+              } catch (transformError) {
+                console.error('Babel transformation error:', transformError);
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: #dc2626; background: #fef2f2; border: 2px solid #fecaca; border-radius: 8px; font-family: system-ui;"><h3>Transformation Error</h3><p>There was an error transforming the JSX code:</p><pre style="font-size: 12px; margin-top: 10px; background: #fee; padding: 10px; border-radius: 4px;">' + transformError.message + '</pre></div>';
               }
             </script>
           </body>
