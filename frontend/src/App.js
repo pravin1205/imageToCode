@@ -422,7 +422,12 @@ function App() {
           `;
         }
         
-        // For other frameworks, show code as text for now
+        // For other frameworks, show code as text for now  
+        let cleanedContent = previewContent;
+        // Remove markdown code blocks for all other frameworks
+        cleanedContent = cleanedContent.replace(/```(vue|angular|svelte|tsx|ts|javascript|js)?\s*\n?/g, '');
+        cleanedContent = cleanedContent.replace(/```\s*$/g, '');
+        
         return `
           <!DOCTYPE html>
           <html>
@@ -437,7 +442,7 @@ function App() {
           <body>
             <div class="code-preview">
               <h3>Generated ${selectedTech.toUpperCase()} Code:</h3>
-              <pre>${previewContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+              <pre>${cleanedContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
             </div>
           </body>
           </html>
