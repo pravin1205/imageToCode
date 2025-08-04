@@ -192,23 +192,6 @@ function App() {
         return `/* ${match.trim()} */`;
       });
       
-      // CRITICAL FIX: Handle template literals properly 
-      // Instead of escaping ${} which causes Babel errors, convert template literals to string concatenation
-      sanitized = sanitized.replace(/`([^`]*\$\{[^}]*\}[^`]*)`/g, (match, content) => {
-        // Convert template literal to string concatenation
-        let converted = content.replace(/\$\{([^}]+)\}/g, '" + ($1) + "');
-        // Handle the start and end quotes properly
-        converted = '"' + converted.replace(/^"|"$/g, '') + '"';
-        return converted;
-      });
-      
-      // Escape remaining standalone backticks that could break the iframe template
-      sanitized = sanitized.replace(/`/g, "'");
-      
-      // Remove any remaining ${} expressions that weren't in template literals
-      sanitized = sanitized.replace(/\$\{/g, "\" + (");
-      sanitized = sanitized.replace(/\}/g, ") + \"");
-      
       return sanitized;
     } catch (error) {
       console.error('Error sanitizing component code:', error);
