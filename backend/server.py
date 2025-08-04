@@ -174,7 +174,7 @@ async def get_status_checks():
     return [StatusCheck(**status_check) for status_check in status_checks]
 
 @api_router.post("/upload-and-generate")
-async def upload_and_generate_code(file: UploadFile = File(...), technology: str = "react", comments: str = ""):
+async def upload_and_generate_code(file: UploadFile = File(...), technology: str = Form("react"), comments: str = Form("")):
     try:
         # Validate file type
         if not file.content_type.startswith('image/'):
