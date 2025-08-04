@@ -233,12 +233,16 @@ function App() {
         componentCode = componentCode.replace(/```(jsx|javascript|js|react)?\s*\n?/g, '');
         componentCode = componentCode.replace(/```\s*$/g, '');
         
+        console.log('After markdown cleanup, componentCode preview:', componentCode.substring(0, 200));
+        
         // Remove export statements and clean the code
         componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
         componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
         
         // Sanitize and escape the component code to prevent JavaScript injection and regex errors
         componentCode = sanitizeComponentCode(componentCode);
+        
+        console.log('Final componentCode for iframe injection:', componentCode.substring(0, 300));
         
         return `
           <!DOCTYPE html>
