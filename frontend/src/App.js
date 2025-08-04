@@ -1,201 +1,183 @@
-import React, { useState, useRef } from "react";
-import "./App.css";
-import axios from "axios";
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Get backend URL from environment or use fallback
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
 const TECHNOLOGIES = [
-  { value: "react", label: "React", icon: "⚛️", color: "bg-blue-100 text-blue-800" },
-  { value: "angular", label: "Angular", icon: "🅰️", color: "bg-red-100 text-red-800" },
-  { value: "vue", label: "Vue.js", icon: "💚", color: "bg-green-100 text-green-800" },
-  { value: "svelte", label: "Svelte", icon: "🧡", color: "bg-orange-100 text-orange-800" },
-  { value: "html", label: "HTML + CSS + JS", icon: "🌐", color: "bg-purple-100 text-purple-800" }
+  { value: 'react', label: 'React', icon: '⚛️' },
+  { value: 'vue', label: 'Vue.js', icon: '💚' },
+  { value: 'angular', label: 'Angular', icon: '🅰️' },
+  { value: 'svelte', label: 'Svelte', icon: '🧡' },
+  { value: 'html', label: 'HTML + CSS + JS', icon: '🌐' },
 ];
 
 const PREVIEW_MODES = [
-  { value: "desktop", label: "Desktop", icon: "🖥️", width: "100%" },
-  { value: "tablet", label: "Tablet", icon: "📱", width: "768px" },
-  { value: "mobile", label: "Mobile", icon: "📲", width: "375px" }
+  { value: 'desktop', label: 'Desktop', icon: '🖥️', width: '100%' },
+  { value: 'tablet', label: 'Tablet', icon: '📱', width: '768px' },
+  { value: 'mobile', label: 'Mobile', icon: '📱', width: '375px' },
 ];
 
 function App() {
-  const [selectedTech, setSelectedTech] = useState("react");
-  const [previewMode, setPreviewMode] = useState("desktop");
   const [uploadedImage, setUploadedImage] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [userComments, setUserComments] = useState("");
-  const [generatedCode, setGeneratedCode] = useState("");
-  const [sessionId, setSessionId] = useState(null);
+  const [selectedTech, setSelectedTech] = useState('react');
+  const [generatedCode, setGeneratedCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState("");
+  const [previewMode, setPreviewMode] = useState('desktop');
+  const [sessionId, setSessionId] = useState('');
+  const [chatInput, setChatInput] = useState('');
   const [isChatting, setIsChatting] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [userComments, setUserComments] = useState('');
+  const [error, setError] = useState('');
+  
   const fileInputRef = useRef(null);
 
-  const handleFileUpload = async (file) => {
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setUploadedImage(e.target.result);
-    };
-    reader.readAsDataURL(file);
-
-    // Store file for later generation
-    setUploadedFile(file);
-    
-    // Clear previous results
-    setGeneratedCode("");
-    setSessionId(null);
-    setChatMessages([]);
-  };
-
-  const handleGenerateCode = async () => {
-    if (!uploadedFile) {
-      alert('Please upload an image first');
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', uploadedFile);
-      formData.append('technology', selectedTech);
-      formData.append('comments', userComments);
-
-      const response = await axios.post(`${API}/upload-and-generate`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      setGeneratedCode(response.data.code);
-      setSessionId(response.data.session_id);
-      setChatMessages([{
-        type: 'ai',
-        message: `Generated ${selectedTech} code from your screenshot! ${userComments ? 'I\'ve incorporated your specific requirements.' : ''} You can now preview it and ask for modifications.`,
-        timestamp: new Date().toISOString()
-      }]);
-
-    } catch (error) {
-      console.error('Code generation failed:', error);
-      alert('Code generation failed. Please try again.');
-    } finally {
-      setIsGenerating(false);
+  const handleFileUpload = (file) => {
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedImage(e.target.result);
+        setError('');
+        // Reset generated code when new image is uploaded
+        setGeneratedCode('');
+        setSessionId('');
+        setChatHistory([]);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setError('Please upload a valid image file (PNG, JPG, SVG)');
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
-    }
+    const file = e.dataTransfer.files[0];
+    handleFileUpload(file);
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleFileUpload(file);
+  const generateCode = async () => {
+    if (!uploadedImage) {
+      setError('Please upload an image first');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    
+    try {
+      // Convert data URL to file
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', blob, 'screenshot.png');
+      formData.append('technology', selectedTech);
+      formData.append('comments', userComments || '');
+
+      // Make API call
+      const apiResponse = await axios.post(`${BACKEND_URL}/api/upload-and-generate`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 30000, // 30 second timeout
+      });
+
+      if (apiResponse.data && apiResponse.data.code) {
+        setGeneratedCode(apiResponse.data.code);
+        setSessionId(apiResponse.data.session_id);
+        setError('');
+      } else {
+        throw new Error('No code generated from API response');
+      }
+      
+    } catch (error) {
+      console.error('Code generation failed:', error);
+      let errorMessage = 'Failed to generate code. ';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else if (error.response?.status === 400) {
+        errorMessage += error.response.data?.detail || 'Invalid request.';
+      } else if (error.response?.status === 500) {
+        errorMessage += 'Server error. Please try again later.';
+      } else if (error.message.includes('Network Error')) {
+        errorMessage += 'Network connection error. Please check your connection.';
+      } else {
+        errorMessage += error.message || 'Unknown error occurred.';
+      }
+      
+      setError(errorMessage);
+      
+      // Set fallback code for preview
+      setGeneratedCode(createFallbackCode(selectedTech, errorMessage));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const handleChatSubmit = async (e) => {
-    e.preventDefault();
+  const createFallbackCode = (technology, errorMessage) => {
+    if (technology === 'react') {
+      return `import React from 'react';
+
+const ErrorComponent = () => {
+  return (
+    <div className="p-6 bg-red-50 border-2 border-red-200 rounded-lg max-w-md mx-auto">
+      <h3 className="text-lg font-bold text-red-800 mb-2">Generation Error</h3>
+      <p className="text-red-700 mb-2">
+        ${errorMessage}
+      </p>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+      >
+        Try Again
+      </button>
+    </div>
+  );
+};
+
+export default ErrorComponent;`;
+    }
+    return `/* Error: ${errorMessage} */`;
+  };
+
+  const sendChatMessage = async () => {
     if (!chatInput.trim() || !sessionId) return;
 
-    const userMessage = {
-      type: 'user',
-      message: chatInput,
-      timestamp: new Date().toISOString()
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
     setIsChatting(true);
+    const userMessage = chatInput;
+    setChatInput('');
+    
+    // Add user message to history
+    setChatHistory(prev => [...prev, { type: 'user', message: userMessage }]);
 
     try {
-      const response = await axios.post(`${API}/chat`, {
+      const response = await axios.post(`${BACKEND_URL}/api/chat`, {
         session_id: sessionId,
-        message: chatInput,
+        message: userMessage,
         current_code: generatedCode
       });
 
-      const aiMessage = {
-        type: 'ai',
-        message: response.data.response,
-        timestamp: new Date().toISOString()
-      };
-
-      setChatMessages(prev => [...prev, aiMessage]);
-
-      // If response contains code, update the generated code
-      if (response.data.response.includes('```')) {
-        // Extract code from response (basic extraction)
-        const codeMatch = response.data.response.match(/```[\w]*\n([\s\S]*?)\n```/);
-        if (codeMatch) {
-          setGeneratedCode(codeMatch[1]);
+      if (response.data && response.data.response) {
+        // Add AI response to history
+        setChatHistory(prev => [...prev, { type: 'ai', message: response.data.response }]);
+        
+        // Update generated code if the response contains code
+        if (response.data.response.length > 100) { // Assume longer responses are code
+          setGeneratedCode(response.data.response);
         }
       }
-
     } catch (error) {
       console.error('Chat failed:', error);
-      setChatMessages(prev => [...prev, {
-        type: 'ai',
-        message: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date().toISOString()
-      }]);
+      setChatHistory(prev => [...prev, { type: 'ai', message: 'Sorry, I encountered an error. Please try again.' }]);
     } finally {
       setIsChatting(false);
-      setChatInput('');
-    }
-  };
-
-  // Sanitize component code to prevent JavaScript injection and regex errors
-  const sanitizeComponentCode = (code) => {
-    if (!code) return '';
-    
-    try {
-      // Fix common regex pattern issues that cause "unterminated regular expression" errors
-      let sanitized = code;
-      
-      // Escape any malformed regex patterns
-      // Look for potential problematic regex patterns and fix them
-      sanitized = sanitized.replace(/\/([^\/\n]*)\[([^\]]*)(;|$)/g, (match, before, inside, after) => {
-        // If we find a regex-like pattern that's incomplete, try to fix it
-        if (!inside.includes(']')) {
-          return `/${before}[${inside}]/${after}`;
-        }
-        return match;
-      });
-      
-      // Fix incomplete regex patterns like /returns*([^;
-      sanitized = sanitized.replace(/\/([^\/\n]*)\(\[\^([^;\]]*)(;|\)|$)/g, (match, before, inside, after) => {
-        // Complete the character class and regex
-        return `/${before}([^${inside}])${after}`;
-      });
-      
-      // Remove any incomplete regex literals that start with / but don't have closing /
-      sanitized = sanitized.replace(/\/[^\/\n]*\[([^\]\/\n]*)(;|\n|$)/g, (match) => {
-        // If it looks like an incomplete regex, comment it out
-        return `/* ${match.trim()} */`;
-      });
-      
-      return sanitized;
-    } catch (error) {
-      console.error('Error sanitizing component code:', error);
-      return code; // Return original if sanitization fails
     }
   };
 
@@ -224,7 +206,7 @@ function App() {
         
         // CRITICAL FIX: Remove markdown code blocks that cause JavaScript syntax errors
         // Remove ```jsx, ```javascript, ```js, and ``` markers
-        componentCode = componentCode.replace(/```(jsx|javascript|js|react)?\s*\n?/g, '');
+        componentCode = componentCode.replace(/```(jsx|javascript|js|react|typescript|ts)?\s*\n?/g, '');
         componentCode = componentCode.replace(/```\s*$/g, '');
         
         console.log('After markdown cleanup, componentCode preview:', componentCode.substring(0, 200));
@@ -233,8 +215,8 @@ function App() {
         componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
         componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
         
-        // Sanitize and escape the component code to prevent JavaScript injection and regex errors
-        componentCode = sanitizeComponentCode(componentCode);
+        // Clean up any remaining issues
+        componentCode = componentCode.trim();
         
         console.log('Final componentCode for iframe injection:', componentCode.substring(0, 300));
         
@@ -254,6 +236,7 @@ function App() {
           </head>
           <body>
             <div id="root"></div>
+            
             <script>
               // Make React hooks and utilities available globally
               window.React = React;
@@ -281,103 +264,129 @@ function App() {
               // Direct JSX code injection - let Babel transform everything properly
               const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
               
-              // === GENERATED COMPONENT CODE STARTS HERE ===
-              ${componentCode}
-              // === GENERATED COMPONENT CODE ENDS HERE ===
-              
-              // Auto-detect and render component after Babel transformation
-              setTimeout(() => {
-                try {
-                  const root = ReactDOM.createRoot(document.getElementById('root'));
-                  let ComponentToRender = null;
-                  let componentName = '';
-                  
-                  // Enhanced component detection - check all possible component patterns
-                  const componentPatterns = [
-                    // Arrow function components: const ComponentName = () => { ... }
-                    { pattern: /const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g, type: 'arrow' },
-                    // Function declarations: function ComponentName() { ... }
-                    { pattern: /function\\s+(\\w+)\\s*\\([^)]*\\)/g, type: 'function' },
-                    // Variable function assignments: const ComponentName = function() { ... }
-                    { pattern: /const\\s+(\\w+)\\s*=\\s*function/g, type: 'variable' }
-                  ];
-                  
-                  const excludedNames = ['useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'console', 'alert', 'setTimeout', 'setInterval'];
-                  
-                  // Try each pattern to find components
-                  for (let patternObj of componentPatterns) {
-                    const { pattern, type } = patternObj;
-                    let match;
+              try {
+                // === GENERATED COMPONENT CODE STARTS HERE ===
+                ${componentCode}
+                // === GENERATED COMPONENT CODE ENDS HERE ===
+                
+                // Auto-detect and render component after Babel transformation
+                setTimeout(() => {
+                  try {
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    let ComponentToRender = null;
+                    let componentName = '';
                     
-                    while ((match = pattern.exec(\`${componentCode}\`)) !== null) {
-                      const name = match[1];
+                    // Enhanced component detection - check all possible component patterns
+                    const componentPatterns = [
+                      // Arrow function components: const ComponentName = () => { ... }
+                      { pattern: /const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g, type: 'arrow' },
+                      // Function declarations: function ComponentName() { ... }
+                      { pattern: /function\\s+(\\w+)\\s*\\([^)]*\\)/g, type: 'function' },
+                      // Variable function assignments: const ComponentName = function() { ... }
+                      { pattern: /const\\s+(\\w+)\\s*=\\s*function/g, type: 'variable' }
+                    ];
+                    
+                    const excludedNames = ['useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'console', 'alert', 'setTimeout', 'setInterval'];
+                    
+                    // Try each pattern to find components
+                    for (let patternObj of componentPatterns) {
+                      const { pattern, type } = patternObj;
+                      let match;
                       
-                      if (name && !excludedNames.includes(name) && typeof window[name] === 'function') {
-                        ComponentToRender = window[name];
-                        componentName = name;
-                        console.log(\`Found \${type} component: \${componentName}\`);
-                        break;
+                      while ((match = pattern.exec(\`${componentCode}\`)) !== null) {
+                        const name = match[1];
+                        
+                        if (name && !excludedNames.includes(name) && typeof window[name] === 'function') {
+                          ComponentToRender = window[name];
+                          componentName = name;
+                          console.log(\`Found \${type} component: \${componentName}\`);
+                          break;
+                        }
                       }
+                      
+                      if (ComponentToRender) break;
                     }
                     
-                    if (ComponentToRender) break;
-                  }
-                  
-                  // Render the component or fallback
-                  if (ComponentToRender) {
-                    console.log('Rendering detected component:', componentName);
-                    root.render(<ComponentToRender />);
-                  } else {
-                    // Show success message if no component detected but code executed successfully  
-                    const SuccessComponent = () => (
-                      <div className="flex items-center justify-center min-h-[200px] p-6">
-                        <div className="max-w-md mx-auto text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
-                          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                          <h3 className="text-xl font-bold text-green-800 mb-3">Code Generated Successfully!</h3>
-                          <p className="text-green-600 mb-4">
-                            Your React component has been generated and processed without errors.
-                          </p>
-                          <div className="bg-green-100 p-3 rounded-lg text-sm text-green-700">
-                            <strong>Status:</strong> Code compiled and ready to use
+                    // Render the component or fallback
+                    if (ComponentToRender) {
+                      console.log('Rendering detected component:', componentName);
+                      root.render(<ComponentToRender />);
+                    } else {
+                      // Show success message if no component detected but code executed successfully  
+                      const SuccessComponent = () => (
+                        <div className="flex items-center justify-center min-h-[200px] p-6">
+                          <div className="max-w-md mx-auto text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
+                            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-green-800 mb-3">Code Generated Successfully!</h3>
+                            <p className="text-green-600 mb-4">
+                              Your React component has been generated and processed without errors.
+                            </p>
+                            <div className="bg-green-100 p-3 rounded-lg text-sm text-green-700">
+                              <strong>Status:</strong> Code compiled and ready to use
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
+                      
+                      console.log('No component auto-detected, showing success message');
+                      root.render(<SuccessComponent />);
+                    }
                     
-                    console.log('No component auto-detected, showing success message');
-                    root.render(<SuccessComponent />);
+                  } catch (renderError) {
+                    console.error('Component render error:', renderError);
+                    
+                    const ErrorComponent = () => (
+                      <div className="flex items-center justify-center min-h-[200px] p-6">
+                        <div className="max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-red-800 mb-3">Render Error</h3>
+                            <p className="text-red-600 mb-3">There was an error rendering the component:</p>
+                            <pre className="bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left">
+                              {renderError.message}
+                            </pre>
+                          </div>
+                        </div>
+                      );
+                    
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    root.render(<ErrorComponent />);
                   }
-                  
-                } catch (renderError) {
-                  console.error('Component render error:', renderError);
-                  
+                }, 100);
+                
+              } catch (transformError) {
+                console.error('Babel transformation error:', transformError);
+                
+                // Render error message using React
+                setTimeout(() => {
                   const ErrorComponent = () => (
                     <div className="flex items-center justify-center min-h-[200px] p-6">
                       <div className="max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6">
                         <div className="text-center">
                           <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <span className="text-white text-2xl">!</span>
                           </div>
-                          <h3 className="text-lg font-bold text-red-800 mb-3">Render Error</h3>
-                          <p className="text-red-600 mb-3">There was an error rendering the component:</p>
+                          <h3 className="text-lg font-bold text-red-800 mb-3">Transformation Error</h3>
+                          <p className="text-red-600 mb-3">There was an error processing the JSX code:</p>
                           <pre className="bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left">
-                            {renderError.message}
+                            {transformError.message}
                           </pre>
                         </div>
                       </div>
-                    </div>
-                  );
+                    );
                   
                   const root = ReactDOM.createRoot(document.getElementById('root'));
                   root.render(<ErrorComponent />);
-                }
-              }, 100);
+                }, 100);
+              }
             </script>
           </body>
           </html>
@@ -582,39 +591,28 @@ function App() {
                     </button>
                   </div>
                 ) : (
-                  <div>
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                  <div onClick={() => fileInputRef.current?.click()}>
+                    <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-indigo-600 text-2xl">📷</span>
                     </div>
-                    <p className="text-lg font-medium text-gray-800 mb-2">
-                      Drop your screenshot here
+                    <p className="text-gray-600 mb-2">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
                     </p>
-                    <p className="text-sm text-gray-600">
-                      or{" "}
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-indigo-600 hover:text-indigo-800 font-semibold underline"
-                      >
-                        click to browse
-                      </button>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-3">PNG, JPG, SVG up to 10MB</p>
+                    <p className="text-sm text-gray-500">PNG, JPG, SVG up to 10MB</p>
                   </div>
                 )}
               </div>
-
+              
               <input
-                type="file"
                 ref={fileInputRef}
-                onChange={handleFileSelect}
+                type="file"
                 accept="image/*"
+                onChange={(e) => handleFileUpload(e.target.files[0])}
                 className="hidden"
               />
             </div>
 
-            {/* Comments Section */}
+            {/* Instructions Section */}
             {uploadedImage && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
                 <div className="flex items-center space-x-3 mb-6">
@@ -627,14 +625,16 @@ function App() {
                 <textarea
                   value={userComments}
                   onChange={(e) => setUserComments(e.target.value)}
-                  placeholder="Describe your requirements... (e.g., 'Make the navbar sticky', 'Use blue color scheme', 'Add hover effects to buttons')"
-                  className="w-full h-32 p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400"
+                  placeholder="Optional: Add specific requirements like colors, interactions, or styling preferences..."
+                  className="w-full h-32 p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
                 />
-                <p className="text-xs text-gray-500 mt-2">Optional but helps generate better code tailored to your needs</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Help the AI understand your specific needs for better results
+                </p>
               </div>
             )}
 
-            {/* Generate Button */}
+            {/* Generate Section */}
             {uploadedImage && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
                 <div className="flex items-center space-x-3 mb-6">
@@ -643,116 +643,104 @@ function App() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Generate Code</h2>
                 </div>
-
+                
                 {isGenerating ? (
                   <LoadingSpinner message={`Generating ${selectedTech} code...`} />
                 ) : (
                   <button
-                    onClick={handleGenerateCode}
-                    disabled={!uploadedFile}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    onClick={generateCode}
+                    disabled={!uploadedImage}
+                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    <div className="flex items-center justify-center space-x-2">
-                      <span>✨ Generate {selectedTech.charAt(0).toUpperCase() + selectedTech.slice(1)} Code</span>
-                    </div>
+                    ✨ Generate {selectedTech.charAt(0).toUpperCase() + selectedTech.slice(1)} Code
                   </button>
                 )}
-
-                {/* Selected tech indicator */}
-                <div className="mt-4 text-center">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    TECHNOLOGIES.find(t => t.value === selectedTech)?.color || 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {TECHNOLOGIES.find(t => t.value === selectedTech)?.icon} {TECHNOLOGIES.find(t => t.value === selectedTech)?.label}
-                  </span>
-                </div>
+                
+                {error && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700 text-sm">{error}</p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Chat Section */}
-            {sessionId && (
+            {generatedCode && (
               <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">💬 Feedback & Adjustments</h2>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">💬 Chat & Adjustments</h3>
                 
-                <div className="h-64 overflow-y-auto mb-6 p-4 bg-gray-50 rounded-xl border">
-                  {chatMessages.map((msg, index) => (
-                    <div key={index} className={`mb-4 ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
-                      <div className={`inline-block max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-sm ${
+                {/* Chat History */}
+                <div className="max-h-64 overflow-y-auto mb-4 space-y-3">
+                  {chatHistory.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg ${
                         msg.type === 'user'
-                          ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                          : 'bg-white text-gray-800 border-2 border-gray-200'
-                      }`}>
-                        <p className="text-sm">{msg.message}</p>
-                      </div>
+                          ? 'bg-indigo-100 text-indigo-800 ml-4'
+                          : 'bg-gray-100 text-gray-800 mr-4'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                     </div>
                   ))}
-                  {isChatting && (
-                    <div className="text-left">
-                      <div className="inline-block bg-gray-200 px-4 py-3 rounded-xl">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
-
-                <form onSubmit={handleChatSubmit} className="flex space-x-3">
+                
+                {/* Chat Input */}
+                <div className="flex space-x-2">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask for changes: 'Make button blue', 'Center the header'..."
-                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                    placeholder="Ask for changes (e.g., 'Make the button blue')"
+                    className="flex-1 p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     disabled={isChatting}
                   />
                   <button
-                    type="submit"
-                    disabled={isChatting || !chatInput.trim()}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all duration-200"
+                    onClick={sendChatMessage}
+                    disabled={!chatInput.trim() || isChatting}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Send
+                    {isChatting ? '...' : 'Send'}
                   </button>
-                </form>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Preview & Code Section */}
-          <div className="xl:col-span-2 space-y-8">
-            {generatedCode && renderPreview()}
-
-            {generatedCode && (
-              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">📝 Generated Code</h2>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(generatedCode)}
-                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-semibold transition-all duration-200 flex items-center space-x-2"
-                  >
-                    <span>📋</span>
-                    <span>Copy Code</span>
-                  </button>
+          {/* Preview Section */}
+          <div className="xl:col-span-2">
+            {generatedCode ? (
+              <>
+                {renderPreview()}
+                
+                {/* Generated Code Display */}
+                <div className="mt-8 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-900 px-6 py-4 flex items-center justify-between">
+                    <span className="text-white font-medium">Generated Code</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(generatedCode)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                    >
+                      Copy Code
+                    </button>
+                  </div>
+                  <div className="p-6 bg-gray-50 max-h-96 overflow-y-auto">
+                    <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
+                      {generatedCode}
+                    </pre>
+                  </div>
                 </div>
-                <div className="bg-gray-900 rounded-xl p-6 overflow-x-auto shadow-inner">
-                  <pre className="text-green-400 text-sm font-mono leading-relaxed">
-                    <code>{generatedCode}</code>
-                  </pre>
+              </>
+            ) : (
+              <div className="bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-300 p-12 text-center">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-gray-400 text-3xl">🎯</span>
                 </div>
-              </div>
-            )}
-
-            {!generatedCode && !isGenerating && (
-              <div className="bg-white rounded-2xl shadow-xl p-16 text-center border border-gray-200">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">Ready to Create Magic ✨</h3>
-                <p className="text-gray-600 text-lg">Upload a UI screenshot and watch as AI transforms it into responsive, modern code</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Ready for Code Generation</h3>
+                <p className="text-gray-600">
+                  Upload a screenshot and click "Generate Code" to see your UI come to life
+                </p>
               </div>
             )}
           </div>
