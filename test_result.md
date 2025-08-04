@@ -135,7 +135,7 @@ backend:
         agent: "testing"
         comment: "TESTED: File upload working correctly. Fixed FileContentWithMimeType constructor to use file_path instead of file_content. Properly validates image files and rejects non-image files with 400 status."
 
-  - task: "Code generation API"
+  - task: "Enhanced code generation API with comments"
     implemented: true
     working: true
     file: "/app/backend/server.py"
@@ -145,10 +145,10 @@ backend:
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Implemented AI code generation with framework-specific templates and image analysis"
+        comment: "Enhanced /api/upload-and-generate endpoint to accept user comments parameter for better code generation"
       - working: true
         agent: "testing"
-        comment: "TESTED: Code generation working for all technologies (React, Vue, Angular, Svelte, HTML). AI generates 3000+ character responses with proper framework-specific code. Temporary file handling implemented correctly."
+        comment: "TESTED: Enhanced upload-and-generate endpoint working perfectly. Comments parameter properly integrated into AI prompts. AI successfully incorporates user requirements into generated code. Form data parsing fixed with Form() parameters. All existing functionality maintained with backward compatibility."
 
   - task: "Chat/feedback API"
     implemented: true
