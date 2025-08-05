@@ -279,8 +279,8 @@ export default ErrorComponent;`;
 ${escapedCode}
             </script>
             
-            <script type="text/babel">
-              // Direct JSX code injection - let Babel transform everything properly
+            <script type="text/babel" data-presets="react">
+              // Direct JSX code injection - let Babel transform everything properly with React preset
               const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
               
               try {
