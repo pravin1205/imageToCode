@@ -293,6 +293,7 @@ ${escapedCode}
                 }
                 
                 console.log('Retrieved component code from script tag, length:', rawComponentCode.length);
+                console.log('First 200 chars of raw code:', rawComponentCode.substring(0, 200));
                 
                 // Execute the component code directly (Babel will transform JSX)
                 eval(rawComponentCode);
