@@ -7,12 +7,14 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
 import base64
 import asyncio
-from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContentWithMimeType
+
+# Import the new Multi-AI service
+from ai_models.multi_ai_service import MultiAIService, GenerationResult
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,8 +30,15 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Gemini API configuration
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+# Initialize Multi-AI Service
+multi_ai_service = MultiAIService()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Define Models
 class StatusCheck(BaseModel):
@@ -49,6 +58,9 @@ class CodeGenerationResponse(BaseModel):
     code: str
     technology: str
     session_id: str
+    model_used: str
+    all_models_tried: List[str]
+    generation_time: float
 
 class ChatRequest(BaseModel):
     session_id: str
@@ -59,96 +71,31 @@ class ProjectSession(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     image_base64: str
     technology: str
-    generated_code: Optional[str] = None  # Made optional to handle None responses
+    generated_code: Optional[str] = None
     chat_messages: List[dict] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-# Code generation templates
-FRAMEWORK_TEMPLATES = {
-    "react": """
-You are an expert React developer. Analyze this UI screenshot and generate clean, modern React code.
-
-Requirements:
-- Use functional components with hooks
-- Use Tailwind CSS for styling
-- Make it fully responsive
-- Include proper semantic HTML
-- Add interactive elements where appropriate
-- Use modern React best practices
-- Generate complete component code
-- Return ONLY the component code without markdown formatting
-
-Generate ONLY the React component code, no explanations or markdown.
-    """,
-    "angular": """
-You are an expert Angular developer. Analyze this UI screenshot and generate clean, modern Angular code.
-
-Requirements:
-- Use Angular 15+ features
-- Use Angular Material or Tailwind CSS
-- Make it fully responsive
-- Include proper TypeScript types
-- Add interactive elements where appropriate
-- Use modern Angular best practices
-- Generate complete component code
-
-Generate ONLY the Angular component code, no explanations.
-    """,
-    "vue": """
-You are an expert Vue.js developer. Analyze this UI screenshot and generate clean, modern Vue code.
-
-Requirements:
-- Use Vue 3 Composition API
-- Use Tailwind CSS for styling
-- Make it fully responsive
-- Include proper TypeScript if applicable
-- Add interactive elements where appropriate
-- Use modern Vue best practices
-- Generate complete component code
-
-Generate ONLY the Vue component code, no explanations.
-    """,
-    "svelte": """
-You are an expert Svelte developer. Analyze this UI screenshot and generate clean, modern Svelte code.
-
-Requirements:
-- Use modern Svelte features
-- Use Tailwind CSS for styling
-- Make it fully responsive
-- Include proper reactive statements
-- Add interactive elements where appropriate
-- Use modern Svelte best practices
-- Generate complete component code
-
-Generate ONLY the Svelte component code, no explanations.
-    """,
-    "html": """
-You are an expert web developer. Analyze this UI screenshot and generate clean, modern HTML/CSS/JS code.
-
-Requirements:
-- Use semantic HTML5
-- Use modern CSS with Flexbox/Grid
-- Make it fully responsive
-- Include vanilla JavaScript for interactivity
-- Use modern web standards
-- Generate complete HTML document
-
-Generate ONLY the HTML/CSS/JS code, no explanations.
-    """
-}
-
-def create_gemini_chat(session_id: str = None):
-    """Create a Gemini chat instance"""
-    return LlmChat(
-        session_id=session_id or str(uuid.uuid4()),
-        system_message="You are an expert frontend developer who generates clean, modern code from UI screenshots.",
-        api_key=GEMINI_API_KEY
-    )
+    model_used: Optional[str] = None
+    all_models_tried: List[str] = []
 
 @api_router.get("/")
 async def get_root():
-    return {"message": "Vision to Code Generator API"}
+    return {"message": "Enhanced Multi-AI Vision to Code Generator API"}
+
+@api_router.get("/models")
+async def get_available_models():
+    """Get list of available AI models"""
+    try:
+        models = multi_ai_service.get_available_models()
+        return {
+            "available_models": models,
+            "total_models": len(models),
+            "image_support_models": len([m for m in models if m["supports_images"]]),
+            "text_only_models": len([m for m in models if not m["supports_images"]])
+        }
+    except Exception as e:
+        logger.error(f"Error getting available models: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get available models")
 
 @api_router.post("/status-check")
 async def create_status_check(status: StatusCheckCreate):
@@ -171,98 +118,69 @@ async def upload_and_generate(
     comments: str = Form(default="")
 ):
     """
-    Upload an image and generate code for the specified technology
+    Enhanced upload and generate with Multi-AI support
     """
     try:
-        logger.info(f"Received request for technology: {technology}")
+        logger.info(f"Multi-AI request for technology: {technology}")
         
         # Validate file type
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
         
-        # Read and encode image
+        # Read image data
         contents = await file.read()
         image_base64 = base64.b64encode(contents).decode('utf-8')
         
         # Create session
         session_id = str(uuid.uuid4())
         
-        # Generate code using Gemini
+        # Generate code using Multi-AI service
+        start_time = asyncio.get_event_loop().time()
+        
         try:
-            chat = create_gemini_chat(session_id)
-            
-            # Get framework-specific prompt
-            system_prompt = FRAMEWORK_TEMPLATES.get(technology, FRAMEWORK_TEMPLATES["react"])
-            
-            # Add user comments to the prompt if provided
-            user_requirements = ""
-            if comments and comments.strip():
-                user_requirements = f"\n\nAdditional Requirements from User:\n{comments.strip()}\n\nPlease incorporate these requirements into the generated code."
-            
-            # Save image temporarily for processing
-            import tempfile
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                temp_file.write(contents)
-                temp_file_path = temp_file.name
-            
-            # Create message with image
-            user_message = UserMessage(
-                text=system_prompt + f"\n\nGenerate {technology} code for this UI screenshot.{user_requirements}",
-                file_contents=[FileContentWithMimeType(
-                    mime_type=file.content_type,
-                    file_path=temp_file_path
-                )]
+            best_result, all_results = await multi_ai_service.generate_code_multi_ai(
+                prompt=f"Generate {technology} code for this UI screenshot",
+                technology=technology,
+                image_data=contents,
+                user_comments=comments,
+                max_models=3  # Try up to 3 models
             )
             
-            # Get AI response with validation
-            logger.info("Sending message to Gemini...")
-            generated_code = await chat.send_message(user_message)
+            generation_time = asyncio.get_event_loop().time() - start_time
             
-            # Clean up temporary file
-            os.unlink(temp_file_path)
+            if not best_result or not best_result.success:
+                raise ValueError("All AI models failed to generate code")
             
-            # Validate and clean the generated code
-            if not generated_code or generated_code.strip() == "":
-                logger.error("Gemini returned empty response")
-                generated_code = f"""
-// Error: Could not generate {technology} code from the provided image
-// This might be due to:
-// 1. Image quality issues
-// 2. API limitations
-// 3. Content policy restrictions
-
-const ErrorComponent = () => {{
-  return (
-    <div className="p-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg max-w-md mx-auto">
-      <h3 className="text-lg font-bold text-yellow-800 mb-2">Generation Error</h3>
-      <p className="text-yellow-700">
-        Could not generate code from the provided image. Please try again with a different image or check if the image is clear and readable.
-      </p>
-    </div>
-  );
-}};
-
-export default ErrorComponent;
-"""
+            # Prepare response data
+            all_models_tried = [r.model_type.value for r in all_results]
             
-            # Clean the generated code
-            cleaned_code = clean_generated_code(generated_code, technology)
-            logger.info(f"Generated code length: {len(cleaned_code)}")
+            logger.info(f"Multi-AI generation successful. Best model: {best_result.model_type.value}")
+            logger.info(f"Models tried: {all_models_tried}")
             
         except Exception as e:
-            logger.error(f"Error generating code: {str(e)}")
-            # Provide fallback code
-            cleaned_code = create_fallback_code(technology, str(e))
+            logger.error(f"Multi-AI generation failed: {str(e)}")
+            # Fallback to error handling
+            best_result = GenerationResult(
+                model_type=None,
+                provider=None,
+                success=True,
+                code=create_fallback_code(technology, str(e))
+            )
+            all_results = []
+            generation_time = 0.1
         
         # Save to database
         session_data = ProjectSession(
             id=session_id,
             image_base64=image_base64,
             technology=technology,
-            generated_code=cleaned_code,
+            generated_code=best_result.code,
+            model_used=best_result.model_type.value if best_result.model_type else "fallback",
+            all_models_tried=[r.model_type.value for r in all_results] if all_results else [],
             chat_messages=[{
                 "type": "ai",
-                "message": f"Generated {technology} code from your screenshot" + (" with your specific requirements!" if comments.strip() else ""),
+                "message": f"Generated {technology} code using {best_result.model_type.value if best_result.model_type else 'fallback'} model" + 
+                          (" with your specific requirements!" if comments.strip() else ""),
                 "timestamp": datetime.utcnow().isoformat()
             }]
         )
@@ -271,9 +189,12 @@ export default ErrorComponent;
         
         return {
             "session_id": session_id,
-            "code": cleaned_code,
+            "code": best_result.code,
             "technology": technology,
-            "message": "Code generated successfully"
+            "model_used": best_result.model_type.value if best_result.model_type else "fallback",
+            "all_models_tried": [r.model_type.value for r in all_results] if all_results else [],
+            "generation_time": generation_time,
+            "message": "Code generated successfully using Multi-AI system"
         }
         
     except HTTPException:
@@ -282,64 +203,37 @@ export default ErrorComponent;
         logger.error(f"Unexpected error in upload_and_generate: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-def clean_generated_code(code: str, technology: str) -> str:
-    """Clean and validate generated code"""
-    if not code:
-        return create_fallback_code(technology, "Empty response")
-    
-    # Remove markdown code blocks
-    cleaned = code.strip()
-    
-    # Remove common markdown patterns
-    markdown_patterns = [
-        r'```jsx\s*\n?',
-        r'```javascript\s*\n?', 
-        r'```js\s*\n?',
-        r'```react\s*\n?',
-        r'```typescript\s*\n?',
-        r'```ts\s*\n?',
-        r'```html\s*\n?',
-        r'```css\s*\n?',
-        r'```vue\s*\n?',
-        r'```angular\s*\n?',
-        r'```svelte\s*\n?',
-        r'```\s*$'
-    ]
-    
-    import re
-    for pattern in markdown_patterns:
-        cleaned = re.sub(pattern, '', cleaned, flags=re.MULTILINE)
-    
-    return cleaned.strip()
-
 def create_fallback_code(technology: str, error_message: str) -> str:
-    """Create fallback code when generation fails"""
-    if technology == "react":
+    """Create fallback code when all AI models fail"""
+    if technology.lower() == "react":
         return f"""import React from 'react';
 
 const ErrorComponent = () => {{
   return (
-    <div className="p-6 bg-red-50 border-2 border-red-200 rounded-lg max-w-md mx-auto">
-      <h3 className="text-lg font-bold text-red-800 mb-2">Generation Error</h3>
-      <p className="text-red-700 mb-2">
-        Could not generate React code from the provided image.
+    <div className="p-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg max-w-md mx-auto">
+      <h3 className="text-lg font-bold text-yellow-800 mb-2">Multi-AI Generation Notice</h3>
+      <p className="text-yellow-700 mb-2">
+        All AI models are currently unavailable, but here's a basic component structure.
       </p>
       <details>
-        <summary className="cursor-pointer text-sm text-red-600">Error Details</summary>
-        <pre className="text-xs mt-2 p-2 bg-red-100 rounded">{error_message}</pre>
+        <summary className="cursor-pointer text-sm text-yellow-600">Technical Details</summary>
+        <pre className="text-xs mt-2 p-2 bg-yellow-100 rounded">{error_message[:200]}...</pre>
       </details>
+      <div className="mt-4 p-3 bg-white rounded border">
+        <p className="text-sm">Replace this content with your actual UI components.</p>
+      </div>
     </div>
   );
 }};
 
 export default ErrorComponent;"""
     
-    return f"/* Error generating {technology} code: {error_message} */"
+    return f"/* Multi-AI Generation Error: {error_message} */"
 
 @api_router.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     """
-    Chat endpoint for iterative code improvements
+    Enhanced chat endpoint that can use multi-AI for responses
     """
     try:
         # Get session from database
@@ -347,8 +241,21 @@ async def chat_endpoint(request: ChatRequest):
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        # Create chat instance
-        chat = create_gemini_chat(request.session_id)
+        # For chat, we'll use a simpler single-model approach for now
+        # Could be enhanced to use multi-AI for complex requests
+        
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        # Create chat instance using Gemini (primary model)
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_key:
+            raise ValueError("GEMINI_API_KEY not configured")
+            
+        chat = LlmChat(
+            session_id=request.session_id,
+            system_message="You are an expert frontend developer helping improve existing code.",
+            api_key=gemini_key
+        ).with_model("gemini", "gemini-1.5-flash")
         
         # Create context message
         context = f"""
@@ -411,6 +318,28 @@ Return ONLY the updated code, no explanations.
         logger.error(f"Error in chat endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+def clean_generated_code(code: str, technology: str) -> str:
+    """Clean and validate generated code"""
+    if not code:
+        return create_fallback_code(technology, "Empty response")
+    
+    # Remove markdown code blocks
+    cleaned = code.strip()
+    
+    # Remove common markdown patterns
+    import re
+    markdown_patterns = [
+        r'```(\w+)?\s*\n?',
+        r'```\s*$',
+        r'^Here\'s.*?:\s*',
+        r'^Here is.*?:\s*'
+    ]
+    
+    for pattern in markdown_patterns:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.MULTILINE | re.IGNORECASE)
+    
+    return cleaned.strip()
+
 @api_router.get("/sessions/{session_id}")
 async def get_session(session_id: str):
     """Get a specific session"""
@@ -451,13 +380,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
