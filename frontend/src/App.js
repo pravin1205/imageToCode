@@ -215,10 +215,24 @@ export default ErrorComponent;`;
         componentCode = componentCode.replace(/export\s+default\s+\w+;?\s*$/, '');
         componentCode = componentCode.replace(/import.*from.*['"].*['"];?\s*/g, '');
         
+        // CRITICAL FIX: Handle template literals properly
+        // Fix common template literal issues in JSX
+        componentCode = componentCode.replace(/\$\{([^}]+)\}/g, '${$1}'); // Ensure proper template literal syntax
+        componentCode = componentCode.replace(/\\?\$\\\{/g, '${'); // Fix double escaping
+        
+        // Clean up malformed regex patterns that cause syntax errors
+        componentCode = componentCode.replace(/\/[^\/\n]*\[/g, '/'); // Fix unterminated regex patterns
+        
         // Clean up any remaining issues
         componentCode = componentCode.trim();
         
         console.log('Final componentCode for iframe injection:', componentCode.substring(0, 300));
+        
+        // Use a safer approach - embed code in script tag with proper escaping
+        const escapedCode = componentCode
+          .replace(/\\/g, '\\\\')  // Escape backslashes
+          .replace(/`/g, '\\`')    // Escape backticks
+          .replace(/\$/g, '\\$');   // Escape dollar signs for template literals
         
         return `<!DOCTYPE html>
           <html>
@@ -259,15 +273,29 @@ export default ErrorComponent;`;
               
               console.log('React environment setup complete for Babel transformation');
             </script>
+
+            <!-- Store component code in a script tag to avoid template literal issues -->
+            <script id="component-code" type="text/plain">
+${escapedCode}
+            </script>
             
             <script type="text/babel">
               // Direct JSX code injection - let Babel transform everything properly
               const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
               
               try {
-                // === GENERATED COMPONENT CODE STARTS HERE ===
-                ${componentCode.replace(/\$/g, '\\$')}
-                // === GENERATED COMPONENT CODE ENDS HERE ===
+                // Get component code from script tag to avoid template literal issues
+                const codeElement = document.getElementById('component-code');
+                const rawComponentCode = codeElement ? codeElement.textContent : '';
+                
+                if (!rawComponentCode.trim()) {
+                  throw new Error('No component code found');
+                }
+                
+                console.log('Retrieved component code from script tag, length:', rawComponentCode.length);
+                
+                // Execute the component code directly (Babel will transform JSX)
+                eval(rawComponentCode);
                 
                 // Auto-detect and render component after Babel transformation
                 setTimeout(() => {
@@ -279,29 +307,26 @@ export default ErrorComponent;`;
                     // Enhanced component detection - check all possible component patterns
                     const componentPatterns = [
                       // Arrow function components: const ComponentName = () => { ... }
-                      { pattern: /const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g, type: 'arrow' },
+                      /const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g,
                       // Function declarations: function ComponentName() { ... }
-                      { pattern: /function\\s+(\\w+)\\s*\\([^)]*\\)/g, type: 'function' },
+                      /function\\s+(\\w+)\\s*\\([^)]*\\)/g,
                       // Variable function assignments: const ComponentName = function() { ... }
-                      { pattern: /const\\s+(\\w+)\\s*=\\s*function/g, type: 'variable' }
+                      /const\\s+(\\w+)\\s*=\\s*function/g
                     ];
                     
                     const excludedNames = ['useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'console', 'alert', 'setTimeout', 'setInterval'];
                     
-                    const componentCodeStr = \`${componentCode.replace(/\$/g, '\\$')}\`;
-                    
                     // Try each pattern to find components
-                    for (let patternObj of componentPatterns) {
-                      const { pattern, type } = patternObj;
+                    for (let pattern of componentPatterns) {
                       let match;
                       
-                      while ((match = pattern.exec(componentCodeStr)) !== null) {
+                      while ((match = pattern.exec(rawComponentCode)) !== null) {
                         const name = match[1];
                         
                         if (name && !excludedNames.includes(name) && typeof window[name] === 'function') {
                           ComponentToRender = window[name];
                           componentName = name;
-                          console.log('Found ' + type + ' component: ' + componentName);
+                          console.log('Found component:', componentName);
                           break;
                         }
                       }
@@ -311,7 +336,7 @@ export default ErrorComponent;`;
                     
                     // Render the component or fallback
                     if (ComponentToRender) {
-                      console.log('Rendering detected component:', componentName);
+                      console.log('Rendering component:', componentName);
                       root.render(React.createElement(ComponentToRender));
                     } else {
                       // Show success message if no component detected but code executed successfully  
