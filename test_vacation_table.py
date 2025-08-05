@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 
 # Configuration
-BACKEND_URL = "https://0fea21c3-4df7-4a2e-93ce-149cc8ddd624.preview.emergentagent.com/api"
+BACKEND_URL = "https://3cb4c910-e7f8-4acb-a3fc-3b73c971dcee.preview.emergentagent.com/api"
 
 def create_vacation_request_table_image():
     """Create a realistic vacation request table UI screenshot"""

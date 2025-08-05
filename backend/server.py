@@ -442,7 +442,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://uirender-doctor.preview.emergentagent.com",
+        "https://3cb4c910-e7f8-4acb-a3fc-3b73c971dcee.preview.emergentagent.com",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "*"
