@@ -276,6 +276,9 @@ frontend:
       - working: true
         agent: "main"
         comment: "CRITICAL JSX TRANSFORMATION FIX: User reported persistent 'SyntaxError: Unexpected token <'' issue in console logs indicating JSX still not being transformed properly. Root cause: eval() was executing raw JSX before Babel transformation. IMPLEMENTED: Complete restructure of iframe JSX handling - removed eval() approach, embedded component code directly in type='text/babel' script tag, improved React imports setup before transformation, enhanced component detection after Babel processing, better fallback mechanisms. Now Babel properly transforms JSX syntax before execution, eliminating the syntax errors. Ready for user testing."
+      - working: true
+        agent: "main"
+        comment: "TEMPLATE LITERAL INJECTION FIX IMPLEMENTED: Fixed critical template literal syntax errors causing blank preview. Root cause: componentCode.replace(/\$/g, '\\$') was causing malformed template literals like \\${getStatusColor(leave.status)} leading to Babel parsing errors. SOLUTION: Completely rewritten preview system to use script tag approach - component code is now stored in a plain text script tag and retrieved via textContent to avoid template literal injection issues. Added proper escaping for backslashes, backticks, and dollar signs. Fixed malformed regex pattern handling. Enhanced code sanitization to handle template literals properly. This eliminates the 'Missing semicolon' and 'Unterminated regular expression' errors reported in console logs."
 
   - task: "Responsive preview tabs"
     implemented: true
