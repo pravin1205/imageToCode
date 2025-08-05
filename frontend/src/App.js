@@ -271,60 +271,43 @@ export default ErrorComponent;`;
               window.PureComponent = React.PureComponent;
               window.Fragment = React.Fragment;
               
-              console.log('React environment setup complete for Babel transformation');
+              console.log('React environment setup complete for transformation');
             </script>
 
-            <!-- Store component code in a script tag to avoid template literal issues -->
-            <script id="component-code" type="text/plain">
-${escapedCode}
-            </script>
-            
             <script type="text/babel" data-presets="react">
-              // Direct JSX code injection - let Babel transform everything properly with React preset
-              const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef } = React;
+              // Component code will be injected here safely
+              const { useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef, createElement } = React;
               
               try {
-                // Get component code from script tag to avoid template literal issues
-                const codeElement = document.getElementById('component-code');
-                const rawComponentCode = codeElement ? codeElement.textContent : '';
+                console.log('Starting Babel JSX transformation...');
                 
-                if (!rawComponentCode.trim()) {
-                  throw new Error('No component code found');
-                }
+                // Insert component code directly here - safer than eval or script tag approach
+                ${escapedCode}
                 
-                console.log('Retrieved component code from script tag, length:', rawComponentCode.length);
-                console.log('First 200 chars of raw code:', rawComponentCode.substring(0, 200));
+                console.log('Component code executed successfully');
                 
-                // Instead of eval, use Function constructor for safer execution
-                const executeCode = new Function(rawComponentCode);
-                executeCode();
-                
-                // Auto-detect and render component after Babel transformation
+                // Auto-detect and render component after transformation
                 setTimeout(() => {
                   try {
                     const root = ReactDOM.createRoot(document.getElementById('root'));
                     let ComponentToRender = null;
                     let componentName = '';
                     
-                    // Enhanced component detection - check all possible component patterns
+                    // Enhanced component detection
+                    const codeStr = '${escapedCode}';
                     const componentPatterns = [
-                      // Arrow function components: const ComponentName = () => { ... }
                       /const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>/g,
-                      // Function declarations: function ComponentName() { ... }
                       /function\\s+(\\w+)\\s*\\([^)]*\\)/g,
-                      // Variable function assignments: const ComponentName = function() { ... }
                       /const\\s+(\\w+)\\s*=\\s*function/g
                     ];
                     
                     const excludedNames = ['useState', 'useEffect', 'useContext', 'useReducer', 'useCallback', 'useMemo', 'useRef', 'console', 'alert', 'setTimeout', 'setInterval'];
                     
-                    // Try each pattern to find components
+                    // Try to find component
                     for (let pattern of componentPatterns) {
                       let match;
-                      
-                      while ((match = pattern.exec(rawComponentCode)) !== null) {
+                      while ((match = pattern.exec(codeStr)) !== null) {
                         const name = match[1];
-                        
                         if (name && !excludedNames.includes(name) && typeof window[name] === 'function') {
                           ComponentToRender = window[name];
                           componentName = name;
@@ -332,130 +315,110 @@ ${escapedCode}
                           break;
                         }
                       }
-                      
                       if (ComponentToRender) break;
                     }
                     
-                    // Render the component or fallback
+                    // Render the component
                     if (ComponentToRender) {
                       console.log('Rendering component:', componentName);
-                      root.render(React.createElement(ComponentToRender));
+                      root.render(createElement(ComponentToRender));
                     } else {
-                      // Show success message if no component detected but code executed successfully  
-                      const SuccessComponent = () => React.createElement('div', {
+                      // Success fallback
+                      const SuccessComponent = () => createElement('div', {
                         className: 'flex items-center justify-center min-h-[200px] p-6'
-                      }, React.createElement('div', {
+                      }, createElement('div', {
                         className: 'max-w-md mx-auto text-center bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg'
                       }, [
-                        React.createElement('div', {
+                        createElement('div', {
                           key: 'icon',
                           className: 'w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4'
-                        }, React.createElement('svg', {
-                          className: 'w-8 h-8 text-white',
-                          fill: 'none',
-                          stroke: 'currentColor',
-                          viewBox: '0 0 24 24'
-                        }, React.createElement('path', {
-                          strokeLinecap: 'round',
-                          strokeLinejoin: 'round',
-                          strokeWidth: 2,
-                          d: 'M5 13l4 4L19 7'
-                        }))),
-                        React.createElement('h3', {
+                        }, createElement('span', {
+                          className: 'text-white text-2xl font-bold'
+                        }, '✓')),
+                        createElement('h3', {
                           key: 'title',
                           className: 'text-xl font-bold text-green-800 mb-3'
                         }, 'Code Generated Successfully!'),
-                        React.createElement('p', {
+                        createElement('p', {
                           key: 'description',
                           className: 'text-green-600 mb-4'
-                        }, 'Your React component has been generated and processed without errors.'),
-                        React.createElement('div', {
+                        }, 'Your React component has been processed and is ready to use.'),
+                        createElement('div', {
                           key: 'status',
                           className: 'bg-green-100 p-3 rounded-lg text-sm text-green-700'
-                        }, React.createElement('strong', null, 'Status: '), 'Code compiled and ready to use')
+                        }, 'Status: Code compiled and executed without errors')
                       ]));
                       
                       console.log('No component auto-detected, showing success message');
-                      root.render(React.createElement(SuccessComponent));
+                      root.render(createElement(SuccessComponent));
                     }
                     
                   } catch (renderError) {
                     console.error('Component render error:', renderError);
                     
-                    const ErrorComponent = () => React.createElement('div', {
+                    const ErrorComponent = () => createElement('div', {
                       className: 'flex items-center justify-center min-h-[200px] p-6'
-                    }, React.createElement('div', {
-                      className: 'max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6'
-                    }, React.createElement('div', {
-                      className: 'text-center'
+                    }, createElement('div', {
+                      className: 'max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center'
                     }, [
-                      React.createElement('div', {
+                      createElement('div', {
                         key: 'icon',
                         className: 'w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4'
-                      }, React.createElement('svg', {
-                        className: 'w-8 h-8 text-white',
-                        fill: 'none',
-                        stroke: 'currentColor',
-                        viewBox: '0 0 24 24'
-                      }, React.createElement('path', {
-                        strokeLinecap: 'round',
-                        strokeLinejoin: 'round',
-                        strokeWidth: 2,
-                        d: 'M6 18L18 6M6 6l12 12'
-                      }))),
-                      React.createElement('h3', {
+                      }, createElement('span', {
+                        className: 'text-white text-2xl'
+                      }, '!')),
+                      createElement('h3', {
                         key: 'title',
                         className: 'text-lg font-bold text-red-800 mb-3'
                       }, 'Render Error'),
-                      React.createElement('p', {
+                      createElement('p', {
                         key: 'description',
                         className: 'text-red-600 mb-3'
-                      }, 'There was an error rendering the component:'),
-                      React.createElement('pre', {
+                      }, 'Error rendering component:'),
+                      createElement('pre', {
                         key: 'error',
                         className: 'bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left'
                       }, renderError.message)
-                    ])));
+                    ]));
                   
                     const root = ReactDOM.createRoot(document.getElementById('root'));
-                    root.render(React.createElement(ErrorComponent));
+                    root.render(createElement(ErrorComponent));
                   }
                 }, 100);
                 
               } catch (transformError) {
                 console.error('Babel transformation error:', transformError);
+                console.error('Error details:', transformError.message);
+                console.error('Error stack:', transformError.stack);
                 
-                // Render error message using React.createElement to avoid JSX issues
                 setTimeout(() => {
-                  const ErrorComponent = () => React.createElement('div', {
+                  const ErrorComponent = () => createElement('div', {
                     className: 'flex items-center justify-center min-h-[200px] p-6'
-                  }, React.createElement('div', {
-                    className: 'max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6'
-                  }, React.createElement('div', {
-                    className: 'text-center'
+                  }, createElement('div', {
+                    className: 'max-w-md mx-auto bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center'
                   }, [
-                    React.createElement('div', {
+                    createElement('div', {
                       key: 'icon',
                       className: 'w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4'
-                    }, React.createElement('span', {
+                    }, createElement('span', {
                       className: 'text-white text-2xl'
                     }, '!')),
-                    React.createElement('h3', {
+                    createElement('h3', {
                       key: 'title',
                       className: 'text-lg font-bold text-red-800 mb-3'
                     }, 'Transformation Error'),
-                    React.createElement('p', {
+                    createElement('p', {
                       key: 'description',
                       className: 'text-red-600 mb-3'
-                    }, 'There was an error processing the code:'),
-                    React.createElement('pre', {
+                    }, 'JSX compilation failed:'),
+                    createElement('pre', {
                       key: 'error',
                       className: 'bg-red-100 p-3 rounded text-xs text-red-700 overflow-auto max-h-32 text-left'
                     }, transformError.message)
-                  ])));
+                  ]));
                 
                   const root = ReactDOM.createRoot(document.getElementById('root'));
-                  root.render(React.createElement(ErrorComponent));
+                  root.render(createElement(ErrorComponent));
                 }, 100);
               }
             </script>
