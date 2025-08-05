@@ -234,12 +234,6 @@ export default ErrorComponent;`;
           .replace(/`/g, '\\`')    // Escape backticks
           .replace(/\$/g, '\\$');   // Escape dollar signs for template literals
         
-        // Use a safer approach - embed code in script tag with proper escaping
-        const escapedCode = componentCode
-          .replace(/\\/g, '\\\\')  // Escape backslashes
-          .replace(/`/g, '\\`')    // Escape backticks
-          .replace(/\$/g, '\\$');   // Escape dollar signs for template literals
-        
         return `<!DOCTYPE html>
           <html>
           <head>
