@@ -228,6 +228,12 @@ export default ErrorComponent;`;
         
         console.log('Final componentCode for iframe injection:', componentCode.substring(0, 300));
         
+        // Use safer escaping approach for direct injection in template string
+        const escapedCode = componentCode
+          .replace(/\\/g, '\\\\')  // Escape backslashes
+          .replace(/`/g, '\\`')    // Escape backticks
+          .replace(/\$/g, '\\$');   // Escape dollar signs for template literals
+        
         // Use a safer approach - embed code in script tag with proper escaping
         const escapedCode = componentCode
           .replace(/\\/g, '\\\\')  // Escape backslashes
